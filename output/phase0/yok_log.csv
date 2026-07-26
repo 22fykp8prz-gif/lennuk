@@ -1,0 +1,10 @@
+timestamp,source,institution,endpoint,records_returned,http_status,outcome,error,note
+2026-07-26T22:34:32+00:00,yok,Istanbul Technical University,https://tez.yok.gov.tr/UlusalTezMerkezi/tarama.jsp uni=İSTANBUL TEKNİK ÜNİVERSİTESİ year=2021,,,failed,"Error: Page.goto: net::ERR_TUNNEL_CONNECTION_FAILED at https://tez.yok.gov.tr/UlusalTezMerkezi/tarama.jsp
+Call log:
+  - navigating to ""https://tez.yok.gov.tr/UlusalTezMerkezi/tarama.jsp"", waiting until ""domcontentloaded""
+",
+2026-07-26T22:34:32+00:00,yok,Istanbul Technical University,https://tez.yok.gov.tr/UlusalTezMerkezi/tarama.jsp uni=İSTANBUL TEKNİK ÜNİVERSİTESİ year=2022,,,failed,"Error: Page.goto: net::ERR_TUNNEL_CONNECTION_FAILED at https://tez.yok.gov.tr/UlusalTezMerkezi/tarama.jsp
+Call log:
+  - navigating to ""https://tez.yok.gov.tr/UlusalTezMerkezi/tarama.jsp"", waiting until ""domcontentloaded""
+",
+2026-07-26T22:34:32+00:00,yok,Istanbul Technical University,https://tez.yok.gov.tr/UlusalTezMerkezi/tarama.jsp,,,failed,aborting remaining years after 2 consecutive failures (host unreachable or site structure changed),

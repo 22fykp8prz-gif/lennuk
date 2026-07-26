@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SYNTHETIC TEST FIXTURE. Not harvested data. Mimics a DSpace oai_dc
+     ListRecords response for parser tests only. -->
+<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
+  <responseDate>2026-01-01T00:00:00Z</responseDate>
+  <request verb="ListRecords" metadataPrefix="oai_dc">https://example-repo.invalid/oai/request</request>
+  <ListRecords>
+    <record>
+      <header>
+        <identifier>oai:example-repo.invalid:123456789/1001</identifier>
+        <datestamp>2023-06-01T10:00:00Z</datestamp>
+        <setSpec>com_theses</setSpec>
+      </header>
+      <metadata>
+        <oai_dc:dc xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/"
+                   xmlns:dc="http://purl.org/dc/elements/1.1/">
+          <dc:title>Akusalvesti kasutamine sagedusreservi pakkumiseks Eesti elektrisüsteemis</dc:title>
+          <dc:title>Test parallel title in English</dc:title>
+          <dc:creator>Tamm, Märt</dc:creator>
+          <dc:contributor>Kask, Jaan</dc:contributor>
+          <dc:date>2023-06-01</dc:date>
+          <dc:date>2023-06-15T08:00:00Z</dc:date>
+          <dc:type>info:eu-repo/semantics/masterThesis</dc:type>
+          <dc:type>magistritöö</dc:type>
+          <dc:language>et</dc:language>
+          <dc:description>Töös analüüsitakse akusalvesti osalemist FCR turul. Elering on süsteemihaldur.</dc:description>
+          <dc:subject>sagedusreserv</dc:subject>
+          <dc:subject>akusalvesti</dc:subject>
+          <dc:identifier>https://example-repo.invalid/handle/123456789/1001</dc:identifier>
+          <dc:identifier>https://example-repo.invalid/bitstream/1001/thesis.pdf</dc:identifier>
+        </oai_dc:dc>
+      </metadata>
+    </record>
+    <record>
+      <header status="deleted">
+        <identifier>oai:example-repo.invalid:123456789/1002</identifier>
+        <datestamp>2022-01-01T00:00:00Z</datestamp>
+      </header>
+    </record>
+    <record>
+      <header>
+        <identifier>oai:example-repo.invalid:123456789/1003</identifier>
+        <datestamp>2019-06-01T10:00:00Z</datestamp>
+      </header>
+      <metadata>
+        <oai_dc:dc xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/"
+                   xmlns:dc="http://purl.org/dc/elements/1.1/">
+          <dc:title>Vana töö aastast 2019</dc:title>
+          <dc:creator>Vana, Autor</dc:creator>
+          <dc:date>2019-06-01</dc:date>
+          <dc:type>info:eu-repo/semantics/bachelorThesis</dc:type>
+          <dc:language>et</dc:language>
+        </oai_dc:dc>
+      </metadata>
+    </record>
+    <resumptionToken completeListSize="3" cursor="0"></resumptionToken>
+  </ListRecords>
+</OAI-PMH>

@@ -1,0 +1,30 @@
+country,institution_id,institution_en,institution_native,tier,repo_base_url,repo_software_hint,openaire_org_name,national_system,yok_university_name,pilot,notes
+EE,taltech,Tallinn University of Technology,Tallinna Tehnikaülikool,A,https://digikogu.taltech.ee,dspace,Tallinn University of Technology,,,1,Phase 0 pilot; DSpace-based Digikogu
+EE,ut,University of Tartu,Tartu Ülikool,A,https://dspace.ut.ee,dspace,University of Tartu,,,0,
+LV,rtu,Riga Technical University,Rīgas Tehniskā universitāte,A,https://ortus.rtu.lv,unknown,Riga Technical University,,,0,Endpoint unverified; discovery required
+LV,lbtu,Latvia University of Life Sciences and Technologies,Latvijas Biozinātņu un tehnoloģiju universitāte,A,,unknown,Latvia University of Life Sciences and Technologies,,,0,Repository URL unknown; discovery/gaps
+LT,ktu,Kaunas University of Technology,Kauno technologijos universitetas,A,,elaba,Kaunas University of Technology,elaba,,0,Feeds eLABa; check eLABa OAI before per-repo harvest
+LT,vilniustech,Vilnius Gediminas Technical University,Vilniaus Gedimino technikos universitetas,A,,elaba,Vilnius Gediminas Technical University,elaba,,0,Feeds eLABa
+LT,vu,Vilnius University,Vilniaus universitetas,A,,elaba,Vilnius University,elaba,,0,Feeds eLABa
+PL,pw,Warsaw University of Technology,Politechnika Warszawska,A,https://repo.pw.edu.pl,omega-psir,Warsaw University of Technology,,,0,OMEGA-PSIR software; OAI path differs from DSpace
+PL,agh,AGH University of Krakow,Akademia Górniczo-Hutnicza,A,https://repozytorium.agh.edu.pl,unknown,AGH University of Science and Technology,,,0,Endpoint unverified
+PL,polsl,Silesian University of Technology,Politechnika Śląska,A,https://delibra.bg.polsl.pl,dlibra,Silesian University of Technology,,,1,Phase 0 pilot; dLibra software
+PL,pg,Gdansk University of Technology,Politechnika Gdańska,A,https://mostwiedzy.pl,mostwiedzy,Gdansk University of Technology,,,0,MOST Wiedzy platform
+CZ,cvut,Czech Technical University in Prague,České vysoké učení technické v Praze,A,https://dspace.cvut.cz,dspace,Czech Technical University in Prague,theses_cz,,0,
+CZ,vut,Brno University of Technology,Vysoké učení technické v Brně,A,https://dspace.vut.cz,dspace,Brno University of Technology,theses_cz,,0,Endpoint unverified
+CZ,vsb,VSB - Technical University of Ostrava,VŠB – Technická univerzita Ostrava,A,https://dspace.vsb.cz,dspace,VSB - Technical University of Ostrava,theses_cz,,0,Endpoint unverified
+CZ,zcu,University of West Bohemia,Západočeská univerzita v Plzni,A,https://dspace5.zcu.cz,dspace,University of West Bohemia,theses_cz,,0,Endpoint unverified
+SK,stuba,Slovak University of Technology in Bratislava,Slovenská technická univerzita v Bratislave,A,,unknown,Slovak University of Technology in Bratislava,crzp,,0,CRZP national register is primary route
+SK,tuke,Technical University of Kosice,Technická univerzita v Košiciach,A,,unknown,Technical University of Kosice,crzp,,0,CRZP national register is primary route
+SK,uniza,University of Zilina,Žilinská univerzita v Žiline,A,,unknown,University of Zilina,crzp,,0,CRZP national register is primary route
+SI,unilj,University of Ljubljana,Univerza v Ljubljani,A,https://repozitorij.uni-lj.si,openscience_si,University of Ljubljana,,,0,Behind openscience.si
+SI,unimb,University of Maribor,Univerza v Mariboru,A,https://dk.um.si,openscience_si,University of Maribor,,,0,Behind openscience.si
+RO,upb,National University of Science and Technology Politehnica Bucharest,Universitatea Națională de Știință și Tehnologie Politehnica București,A,,unknown,University Politehnica of Bucharest,,,0,No known open thesis repository; gaps candidate
+RO,tuiasi,Gheorghe Asachi Technical University of Iasi,Universitatea Tehnică Gheorghe Asachi din Iași,A,,unknown,Gheorghe Asachi Technical University of Iasi,,,0,Gaps candidate
+RO,utcluj,Technical University of Cluj-Napoca,Universitatea Tehnică din Cluj-Napoca,A,,unknown,Technical University of Cluj-Napoca,,,0,Gaps candidate
+RO,upt,Politehnica University of Timisoara,Universitatea Politehnica Timișoara,A,,unknown,Politehnica University of Timisoara,,,0,Gaps candidate
+BG,tusofia,Technical University of Sofia,Технически университет – София,A,,unknown,Technical University of Sofia,,,0,Gaps candidate
+BG,tuvarna,Technical University of Varna,Технически университет – Варна,A,,unknown,Technical University of Varna,,,0,Gaps candidate
+TR,itu,Istanbul Technical University,İstanbul Teknik Üniversitesi,A,,yok,Istanbul Technical University,yok,İSTANBUL TEKNİK ÜNİVERSİTESİ,1,Phase 0 pilot; via YÖK Ulusal Tez Merkezi
+TR,odtu,Middle East Technical University,Orta Doğu Teknik Üniversitesi,A,,yok,Middle East Technical University,yok,ORTA DOĞU TEKNİK ÜNİVERSİTESİ,0,Via YÖK
+TR,yildiz,Yildiz Technical University,Yıldız Teknik Üniversitesi,A,,yok,Yildiz Technical University,yok,YILDIZ TEKNİK ÜNİVERSİTESİ,0,Via YÖK

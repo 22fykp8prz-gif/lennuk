@@ -1,0 +1,33 @@
+{
+  "_comment": "SYNTHETIC TEST FIXTURE. Not harvested data. Mimics one OpenAIRE Graph API v2 researchProducts page for parser tests only.",
+  "header": {"numFound": 2, "pageSize": 100, "nextCursor": null},
+  "results": [
+    {
+      "id": "openaire____::testproduct0001",
+      "mainTitle": "Magazyn energii w usługach systemowych — analiza dla rynku mocy",
+      "authors": [{"fullName": "Kowalska, Anna"}],
+      "publicationDate": "2022-09-15",
+      "language": {"code": "pl"},
+      "descriptions": ["Praca magisterska analizuje udział magazynu energii w rynku mocy PSE."],
+      "subjects": [{"subject": {"value": "magazyn energii"}}, {"subject": {"value": "rynek mocy"}}],
+      "type": "publication",
+      "instances": [
+        {
+          "type": "Master thesis",
+          "urls": ["https://example-repo.invalid/record/2001", "https://example-repo.invalid/record/2001/file.pdf"]
+        }
+      ]
+    },
+    {
+      "id": "openaire____::testproduct0002",
+      "mainTitle": "Some journal article that is not a thesis",
+      "authors": [{"fullName": "Nowak, Piotr"}],
+      "publicationDate": "2022-01-01",
+      "language": {"code": "en"},
+      "descriptions": [],
+      "subjects": [],
+      "type": "publication",
+      "instances": [{"type": "Article", "urls": ["https://example-journal.invalid/a/1"]}]
+    }
+  ]
+}
