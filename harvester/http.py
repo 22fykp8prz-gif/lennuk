@@ -68,6 +68,12 @@ class PoliteClient:
         body_p, meta_p = self._cache_paths(url)
         if body_p.exists() and meta_p.exists():
             meta = json.loads(meta_p.read_text())
+            if meta["status"] >= 400:
+                # Error responses written by older versions must never be
+                # replayed as answers; drop and refetch.
+                body_p.unlink(missing_ok=True)
+                meta_p.unlink(missing_ok=True)
+                return None
             return FetchResult(url=url, status=meta["status"], body=body_p.read_bytes(), from_cache=True)
         return None
 
@@ -158,7 +164,11 @@ class PoliteClient:
                 if resp.status_code == 429 or resp.status_code >= 500:
                     last_exc = HarvestError("http_error", f"HTTP {resp.status_code} from {url}", resp.status_code)
                 else:
-                    self._write_cache(url, resp.status_code, resp.content)
+                    # Only successful responses are cached: a cached error
+                    # would be replayed as an answer on the next run and
+                    # poison it long after the source recovers.
+                    if resp.status_code < 400:
+                        self._write_cache(url, resp.status_code, resp.content)
                     if resp.status_code >= 400 and not allow_error_status:
                         raise HarvestError("http_error", f"HTTP {resp.status_code} from {url}", resp.status_code)
                     return FetchResult(url=url, status=resp.status_code, body=resp.content, from_cache=False)
