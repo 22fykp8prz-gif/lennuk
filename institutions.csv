@@ -1,5 +1,5 @@
 country,institution_id,institution_en,institution_native,tier,repo_base_url,repo_software_hint,openaire_org_name,national_system,yok_university_name,pilot,notes
-EE,taltech,Tallinn University of Technology,Tallinna Tehnikaülikool,A,https://digikogu.taltech.ee,dspace,Tallinn University of Technology,,,1,Phase 0 pilot; DSpace-based Digikogu
+EE,taltech,Tallinn University of Technology,Tallinna Tehnikaülikool,A,https://digikogu.taltech.ee,custom,Tallinn University of Technology,,,1,Phase 0 pilot; probe 2026-07-30: no public OAI endpoint (/oai answers 403); rely on OpenAIRE tier 1
 EE,ut,University of Tartu,Tartu Ülikool,A,https://dspace.ut.ee,dspace,University of Tartu,,,0,
 LV,rtu,Riga Technical University,Rīgas Tehniskā universitāte,A,https://ortus.rtu.lv,unknown,Riga Technical University,,,0,Endpoint unverified; discovery required
 LV,lbtu,Latvia University of Life Sciences and Technologies,Latvijas Biozinātņu un tehnoloģiju universitāte,A,,unknown,Latvia University of Life Sciences and Technologies,,,0,Repository URL unknown; discovery/gaps

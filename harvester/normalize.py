@@ -45,12 +45,18 @@ _LEVEL_PATTERNS: list[tuple[str, str]] = [
     ("magistro darbas", "master"),
     ("magistro baigiamasis darbas", "master"),
     ("daktaro disertacija", "doctoral"),
-    # Polish
+    # Polish (nominative + genitive, which appears in type/degree phrases)
     ("praca licencjacka", "bachelor"),
+    ("pracy licencjackiej", "bachelor"),
     ("praca inżynierska", "bachelor"),
     ("praca inzynierska", "bachelor"),
+    ("pracy inżynierskiej", "bachelor"),
     ("praca magisterska", "master"),
+    ("pracy magisterskiej", "master"),
     ("rozprawa doktorska", "doctoral"),
+    ("rozprawy doktorskiej", "doctoral"),
+    ("praca doktorska", "doctoral"),
+    ("pracy doktorskiej", "doctoral"),
     # Czech / Slovak
     ("bakalářská práce", "bachelor"),
     ("bakalarska praca", "bachelor"),

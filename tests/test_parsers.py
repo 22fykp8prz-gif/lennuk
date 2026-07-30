@@ -6,7 +6,7 @@ from lxml import etree
 from harvester.config import Institution
 from harvester import tier1_openaire
 from harvester.tier2_oaipmh import OAI_NS, parse_oai_dc_record, pick_thesis_sets
-from harvester.outputs import dedupe
+from harvester.outputs import dedupe, drop_reviews
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -78,6 +78,17 @@ def test_pick_thesis_sets():
         {"setSpec": "col_789", "setName": "Master theses"},
     ]
     assert pick_thesis_sets(sets) == ["com_123", "col_789"]
+
+
+def test_drop_reviews_filters_referee_reports():
+    thesis = {"title_original": "Rozprawa doktorska o magazynach energii",
+              "type_raw": "rozprawa doktorska"}
+    review = {"title_original": "Recenzja rozprawy doktorskiej mgra inż. Jana Kowalskiego",
+              "type_raw": None}
+    posudek = {"title_original": "Posudek oponenta diplomové práce", "type_raw": "posudek"}
+    kept, dropped = drop_reviews([thesis, review, posudek])
+    assert kept == [thesis]
+    assert dropped == 2
 
 
 def test_dedupe_prefers_richer_source_and_merges():

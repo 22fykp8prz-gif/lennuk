@@ -18,6 +18,24 @@ def _priority(source: str) -> int:
     return 9
 
 
+# Referee reports on theses are filed as separate records in several
+# repositories (Polish "Recenzja rozprawy...", Czech/Slovak "posudek"/
+# "posudok"). They are not theses; drop them, counted and logged.
+_REVIEW_TITLE_PREFIXES = ("recenzja ", "posudek ", "posudok ", "oponentsk")
+_REVIEW_TYPE_MARKERS = ("recenzja", "posudek", "posudok", "oponentsk", "review of thesis")
+
+
+def drop_reviews(records: list[dict]) -> tuple[list[dict], int]:
+    kept = []
+    for r in records:
+        title = (r.get("title_original") or "").casefold()
+        type_raw = (r.get("type_raw") or "").casefold()
+        if title.startswith(_REVIEW_TITLE_PREFIXES) or any(m in type_raw for m in _REVIEW_TYPE_MARKERS):
+            continue
+        kept.append(r)
+    return kept, len(records) - len(kept)
+
+
 def dedupe(records: list[dict]) -> list[dict]:
     """Drop exact id duplicates, then collapse cross-source duplicates on
     (casefolded title, year, institution), keeping the richest source."""

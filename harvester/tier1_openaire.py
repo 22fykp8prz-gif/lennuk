@@ -140,49 +140,59 @@ def harvest_institution(
 
     records: list[dict] = []
     for year in range(year_from, year_to + 1):
-        cursor = "*"
-        endpoint_desc = f"{OPENAIRE_BASE} org={inst.openaire_org_name} year={year}" + (
-            f" relOrganizationId={org_id}" if org_id else " (free-text fallback)")
-        n_year = 0
-        num_found = None
-        try:
-            while True:
-                params = {
-                    "type": "publication",
-                    "fromPublicationDate": f"{year}-01-01",
-                    "toPublicationDate": f"{year}-12-31",
-                    "pageSize": PAGE_SIZE,
-                    "cursor": cursor,
-                }
-                if org_id:
-                    params["relOrganizationId"] = org_id
-                else:
-                    params["search"] = inst.openaire_org_name
-                res = client.get(OPENAIRE_BASE, params=params)
-                payload = json.loads(res.text)
-                header = payload.get("header", {})
-                num_found = int(header.get("numFound", 0))
-                for product in payload.get("results") or []:
-                    rec = parse_product(product, inst)
-                    if rec is not None:
-                        records.append(rec)
-                        n_year += 1
-                cursor = header.get("nextCursor")
-                if not cursor:
-                    break
-        except HarvestError as e:
-            log.add("openaire", endpoint_desc, "failed", institution=inst.institution_en,
-                    http_status=e.status, error=f"{e.kind}: {e}")
-            continue
-        except (json.JSONDecodeError, ValueError) as e:
-            log.add("openaire", endpoint_desc, "failed", institution=inst.institution_en,
-                    error=f"parse_error: {e}")
-            continue
+        # Prefer the org-id filter; if the API rejects it (HTTP 400), fall
+        # back to free-text search for this and subsequent years.
+        modes = ["org", "search"] if org_id else ["search"]
+        for mode in modes:
+            cursor = "*"
+            endpoint_desc = f"{OPENAIRE_BASE} org={inst.openaire_org_name} year={year}" + (
+                f" relOrganizationId={org_id}" if mode == "org" else " (free-text)")
+            n_year = 0
+            num_found = None
+            try:
+                while True:
+                    params = {
+                        "type": "publication",
+                        "fromPublicationDate": f"{year}-01-01",
+                        "toPublicationDate": f"{year}-12-31",
+                        "pageSize": PAGE_SIZE,
+                        "cursor": cursor,
+                    }
+                    if mode == "org":
+                        params["relOrganizationId"] = org_id
+                    else:
+                        params["search"] = inst.openaire_org_name
+                    res = client.get(OPENAIRE_BASE, params=params)
+                    payload = json.loads(res.text)
+                    header = payload.get("header", {})
+                    num_found = int(header.get("numFound", 0))
+                    for product in payload.get("results") or []:
+                        rec = parse_product(product, inst)
+                        if rec is not None:
+                            records.append(rec)
+                            n_year += 1
+                    cursor = header.get("nextCursor")
+                    if not cursor:
+                        break
+            except HarvestError as e:
+                if mode == "org" and e.status == 400:
+                    log.add("openaire", endpoint_desc, "failed", institution=inst.institution_en,
+                            http_status=400,
+                            error="relOrganizationId rejected; retrying with free-text search")
+                    continue  # next mode
+                log.add("openaire", endpoint_desc, "failed", institution=inst.institution_en,
+                        http_status=e.status, error=f"{e.kind}: {e}")
+                break
+            except (json.JSONDecodeError, ValueError) as e:
+                log.add("openaire", endpoint_desc, "failed", institution=inst.institution_en,
+                        error=f"parse_error: {e}")
+                break
 
-        note = f"numFound={num_found}, kept {n_year} thesis-like"
-        if num_found is not None and num_found >= HARD_CAP:
-            note += f"; WARNING partition at/over {HARD_CAP} cap — REPARTITION (results may be truncated)"
-        log.add("openaire", endpoint_desc, "ok" if n_year else "ok_empty",
-                institution=inst.institution_en, records_returned=n_year,
-                http_status=200, note=note)
+            note = f"numFound={num_found}, kept {n_year} thesis-like"
+            if num_found is not None and num_found >= HARD_CAP:
+                note += f"; WARNING partition at/over {HARD_CAP} cap — REPARTITION (results may be truncated)"
+            log.add("openaire", endpoint_desc, "ok" if n_year else "ok_empty",
+                    institution=inst.institution_en, records_returned=n_year,
+                    http_status=200, note=note)
+            break  # this year done, no fallback needed
     return records

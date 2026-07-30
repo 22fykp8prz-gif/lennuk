@@ -151,6 +151,42 @@ def debug_page(out_dir: Path) -> None:
             if f != page.main_frame:
                 inventory(f, f"frame {f.url}")
 
+        # Forms: their action URLs reveal where searches actually POST to
+        # (a possible future path to skipping the browser entirely).
+        forms = page.locator("form")
+        print(f"\nForms ({forms.count()}):")
+        for i in range(forms.count()):
+            f = forms.nth(i)
+            print(f"  action={f.get_attribute('action')!r} method={f.get_attribute('method')!r} "
+                  f"id={f.get_attribute('id')!r} name={f.get_attribute('name')!r}")
+
+        # Selects with sample options (year dropdowns, thesis-type filter).
+        sels = page.locator("select")
+        print(f"\nSelects ({sels.count()}):")
+        for i in range(min(sels.count(), 15)):
+            s = sels.nth(i)
+            opts = [_clean(t) for t in s.locator("option").all_text_contents()][:8]
+            print(f"  name={s.get_attribute('name')!r} id={s.get_attribute('id')!r} options[:8]={opts}")
+
+        # Simulate the university picker with a real name and show what appears.
+        si = page.locator("#search-input")
+        if si.count():
+            print("\nTyping 'İSTANBUL TEKNİK ÜNİVERSİTESİ' into #search-input ...")
+            try:
+                si.first.fill("İSTANBUL TEKNİK ÜNİVERSİTESİ")
+                time.sleep(3)
+                items = [_clean(t) for t in page.locator("li").all_text_contents() if _clean(t)][:30]
+                print(f"list items now visible: {items}")
+                for hidden_id in ("#uniad", "#Universite", "#uni_yoksis_id"):
+                    loc = page.locator(hidden_id)
+                    if loc.count():
+                        print(f"hidden {hidden_id} = {loc.first.input_value()!r}")
+                _dump_debug(page, out_dir, "yok_typed")
+            except Exception as e:
+                print(f"simulation failed: {type(e).__name__}: {e}")
+        else:
+            print("\n#search-input not present on this layout")
+
         prefix = _dump_debug(page, out_dir, "yok_debug")
         print(f"\nScreenshot + HTML saved: {prefix}.png / {prefix}.html")
         browser.close()
@@ -205,27 +241,52 @@ def harvest_institution(
                 try:
                     page.goto(SEARCH_URL, wait_until="domcontentloaded")
                     time.sleep(ACTION_PAUSE)
-                    # Advanced-search tab; label and framing vary, so search
-                    # every frame for every known label.
-                    clicked = _click_any_label(page, DETAILED_SEARCH_LABELS)
-                    if clicked is None:
+                    # tarama.jsp *is* the search screen in the current layout
+                    # (title "Arama Ekranları"); older layouts had an advanced
+                    # tab — click it if present, ignore if not.
+                    _click_any_label(page, DETAILED_SEARCH_LABELS, timeout_ms=3000)
+
+                    # University picker: type into the autocomplete, accept a
+                    # suggestion, then VERIFY the hidden fields got populated.
+                    # Searching without a university filter would silently
+                    # misattribute the whole result set — hard fail instead.
+                    si = page.locator("#search-input")
+                    if si.count() == 0:
                         prefix = _dump_debug(page, raw_dir, f"{inst.institution_id}_{year}_entry")
                         raise RuntimeError(
-                            "advanced-search tab not found (tried: "
-                            + ", ".join(DETAILED_SEARCH_LABELS)
-                            + f"); page snapshot saved to {prefix}.png/.html — "
-                            "run `python -m harvester yok-debug` and share its output"
+                            f"university autocomplete (#search-input) not found; "
+                            f"snapshot {prefix}.png/.html — run `python -m harvester yok-debug`"
                         )
+                    si.first.fill(inst.yok_university_name)
+                    time.sleep(2)
+                    suggestion = page.locator(f"li:has-text('{inst.yok_university_name}')")
+                    if suggestion.count() > 0:
+                        suggestion.first.click()
+                    else:
+                        si.first.press("ArrowDown")
+                        si.first.press("Enter")
+                    time.sleep(1)
+                    picked = ""
+                    for hidden_id in ("#uniad", "#Universite", "#uni_yoksis_id"):
+                        loc = page.locator(hidden_id)
+                        if loc.count():
+                            try:
+                                picked += loc.first.input_value() or ""
+                            except Exception:
+                                pass
+                    if not picked.strip():
+                        prefix = _dump_debug(page, raw_dir, f"{inst.institution_id}_{year}_picker")
+                        raise RuntimeError(
+                            "university picker did not populate uniad/uni_yoksis_id — "
+                            f"refusing to search unfiltered; snapshot {prefix}.png/.html"
+                        )
+                    # Year range, where the form exposes it.
+                    for sel_name in ("yil1", "yil2"):
+                        sel = page.locator(f"select[name='{sel_name}']")
+                        if sel.count():
+                            sel.first.select_option(str(year))
                     time.sleep(ACTION_PAUSE)
-                    # University: the form uses a popup picker bound to
-                    # 'Üniversite'; fall back to a plain input if present.
-                    uni_input = page.locator("input[name='uniad'], input[id*='niversite']").first
-                    uni_input.fill(inst.yok_university_name)
-                    # Year range
-                    page.select_option("select[name='yil1']", str(year))
-                    page.select_option("select[name='yil2']", str(year))
-                    time.sleep(ACTION_PAUSE)
-                    page.click("input[type='submit'], button:has-text('Bul')")
+                    page.click("button[name='-find'], button:has-text('Bul'), input[type='submit']")
                     page.wait_for_load_state("networkidle")
                     time.sleep(ACTION_PAUSE)
 

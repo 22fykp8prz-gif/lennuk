@@ -15,7 +15,7 @@ from .config import PROJECT_ROOT, load_institutions
 from .gaps import write_gaps
 from .http import PoliteClient
 from .log import HarvestLog
-from .outputs import dedupe, write_outputs
+from .outputs import dedupe, drop_reviews, write_outputs
 from .report import write_coverage_report, write_sample_rows
 from . import tier1_openaire, tier2_oaipmh, tier3_yok
 
@@ -59,8 +59,13 @@ def run(phase: int, out_dir: Path, data_dir: Path, offline: bool = False) -> int
             harvested.add(inst.institution_en)
 
     n_raw = len(records)
+    records, n_reviews = drop_reviews(records)
+    if n_reviews:
+        log.add("filter", "review-filter", "ok", records_returned=n_reviews,
+                note="thesis review/referee-report records excluded (not theses)")
     records = dedupe(records)
-    print(f"\n{n_raw} harvested -> {len(records)} after de-duplication")
+    print(f"\n{n_raw} harvested -> {n_reviews} review documents dropped "
+          f"-> {len(records)} after de-duplication")
     df = write_outputs(records, out_dir)
     log.write_csv(out_dir / "harvest_log.csv")
 
