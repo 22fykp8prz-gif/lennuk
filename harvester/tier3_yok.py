@@ -52,6 +52,22 @@ def _click_any_label(page, labels: list[str], timeout_ms: int = 10_000) -> str |
     return None
 
 
+def _set_form_field(page, name: str, value: str) -> bool:
+    """Set a <select> or <input> by name if it exists. Returns whether it did."""
+    sel = page.locator(f"select[name='{name}']")
+    if sel.count():
+        try:
+            sel.first.select_option(value)
+            return True
+        except Exception:
+            return False
+    inp = page.locator(f"input[name='{name}']")
+    if inp.count():
+        inp.first.evaluate("(e, v) => { e.value = v; }", value)
+        return True
+    return False
+
+
 def _dump_debug(page, raw_dir: Path, tag: str) -> str:
     """Save screenshot + HTML of the current page so a failing selector can
     be diagnosed offline. Returns the path prefix."""
@@ -169,23 +185,20 @@ def debug_page(out_dir: Path) -> None:
             print(f"  name={s.get_attribute('name')!r} id={s.get_attribute('id')!r} options[:8]={opts}")
 
         # Simulate the university picker with a real name and show what appears.
-        si = page.locator("#search-input")
-        if si.count():
-            print("\nTyping 'İSTANBUL TEKNİK ÜNİVERSİTESİ' into #search-input ...")
-            try:
-                si.first.fill("İSTANBUL TEKNİK ÜNİVERSİTESİ")
-                time.sleep(3)
-                items = [_clean(t) for t in page.locator("li").all_text_contents() if _clean(t)][:30]
-                print(f"list items now visible: {items}")
-                for hidden_id in ("#uniad", "#Universite", "#uni_yoksis_id"):
-                    loc = page.locator(hidden_id)
-                    if loc.count():
-                        print(f"hidden {hidden_id} = {loc.first.input_value()!r}")
-                _dump_debug(page, out_dir, "yok_typed")
-            except Exception as e:
-                print(f"simulation failed: {type(e).__name__}: {e}")
-        else:
-            print("\n#search-input not present on this layout")
+        print("\nSimulating university pick for 'İSTANBUL TEKNİK ÜNİVERSİTESİ' (DOM click) ...")
+        try:
+            li = page.locator("li:has-text('İSTANBUL TEKNİK ÜNİVERSİTESİ')")
+            print(f"matching <li> entries in picker list: {li.count()}")
+            if li.count():
+                li.first.evaluate("e => e.click()")
+                time.sleep(2)
+            for hidden_id in ("#uniad", "#Universite", "#uni_yoksis_id"):
+                loc = page.locator(hidden_id)
+                if loc.count():
+                    print(f"hidden {hidden_id} = {loc.first.input_value()!r}")
+            _dump_debug(page, out_dir, "yok_typed")
+        except Exception as e:
+            print(f"simulation failed: {type(e).__name__}: {e}")
 
         prefix = _dump_debug(page, out_dir, "yok_debug")
         print(f"\nScreenshot + HTML saved: {prefix}.png / {prefix}.html")
@@ -246,25 +259,29 @@ def harvest_institution(
                     # tab — click it if present, ignore if not.
                     _click_any_label(page, DETAILED_SEARCH_LABELS, timeout_ms=3000)
 
-                    # University picker: type into the autocomplete, accept a
-                    # suggestion, then VERIFY the hidden fields got populated.
-                    # Searching without a university filter would silently
-                    # misattribute the whole result set — hard fail instead.
-                    si = page.locator("#search-input")
-                    if si.count() == 0:
-                        prefix = _dump_debug(page, raw_dir, f"{inst.institution_id}_{year}_entry")
+                    # University picker: the autocomplete input sits in a
+                    # collapsed panel (not visible => normal typing fails),
+                    # but the university <li> list is already in the DOM.
+                    # Click our entry via a DOM click (works while hidden),
+                    # then VERIFY the hidden fields got populated — searching
+                    # without a university filter would misattribute the
+                    # whole result set, so hard-fail instead.
+                    li = page.locator(f"li:has-text('{inst.yok_university_name}')")
+                    if li.count() == 0:
+                        si = page.locator("#search-input")
+                        if si.count():
+                            si.first.evaluate(
+                                "(e, v) => { e.value = v; if (typeof filterList === 'function') filterList(e); }",
+                                inst.yok_university_name)
+                            time.sleep(2)
+                            li = page.locator(f"li:has-text('{inst.yok_university_name}')")
+                    if li.count() == 0:
+                        prefix = _dump_debug(page, raw_dir, f"{inst.institution_id}_{year}_picker")
                         raise RuntimeError(
-                            f"university autocomplete (#search-input) not found; "
-                            f"snapshot {prefix}.png/.html — run `python -m harvester yok-debug`"
+                            f"university entry {inst.yok_university_name!r} not found in "
+                            f"picker list; snapshot {prefix}.png/.html — run yok-debug"
                         )
-                    si.first.fill(inst.yok_university_name)
-                    time.sleep(2)
-                    suggestion = page.locator(f"li:has-text('{inst.yok_university_name}')")
-                    if suggestion.count() > 0:
-                        suggestion.first.click()
-                    else:
-                        si.first.press("ArrowDown")
-                        si.first.press("Enter")
+                    li.first.evaluate("e => e.click()")
                     time.sleep(1)
                     picked = ""
                     for hidden_id in ("#uniad", "#Universite", "#uni_yoksis_id"):
@@ -280,13 +297,21 @@ def harvest_institution(
                             "university picker did not populate uniad/uni_yoksis_id — "
                             f"refusing to search unfiltered; snapshot {prefix}.png/.html"
                         )
-                    # Year range, where the form exposes it.
-                    for sel_name in ("yil1", "yil2"):
-                        sel = page.locator(f"select[name='{sel_name}']")
-                        if sel.count():
-                            sel.first.select_option(str(year))
+                    # Year range, where the form exposes it (select or input;
+                    # the current layout showed no year fields, in which case
+                    # one unpartitioned search runs and years are filtered
+                    # from the result rows instead).
+                    year_filtered = all(
+                        _set_form_field(page, name, str(year)) for name in ("yil1", "yil2"))
                     time.sleep(ACTION_PAUSE)
-                    page.click("button[name='-find'], button:has-text('Bul'), input[type='submit']")
+                    # Submit the form that owns the university fields (the
+                    # page has a second, keyword-search form with its own
+                    # submit button — clicking that one would ignore the
+                    # university filter).
+                    page.evaluate(
+                        "() => { const f = document.getElementById('uniad').form;"
+                        " const b = f && f.querySelector(\"button[type='submit'],input[type='submit']\");"
+                        " if (b) { b.click(); } else if (f) { f.submit(); } }")
                     page.wait_for_load_state("networkidle")
                     time.sleep(ACTION_PAUSE)
 
@@ -306,10 +331,13 @@ def harvest_institution(
                         time.sleep(ACTION_PAUSE)
                         page_no += 1
 
+                    note = f"{page_no} result page(s)"
+                    if not year_filtered:
+                        note += ("; form exposes no year fields — single unpartitioned "
+                                 "search, years filtered from result rows")
                     log.add("yok", endpoint_desc, "ok" if n_year else "ok_empty",
                             institution=inst.institution_en, records_returned=n_year,
-                            http_status=200,
-                            note=f"{page_no} result page(s); selectors need live verification")
+                            http_status=200, note=note)
                 except Exception as e:  # navigation/selector failures are per-year, logged, never guessed around
                     log.add("yok", endpoint_desc, "failed", institution=inst.institution_en,
                             error=f"{type(e).__name__}: {e}")
@@ -322,8 +350,13 @@ def harvest_institution(
                     continue
                 else:
                     consecutive_failures = 0
+                    if not year_filtered:
+                        break  # one search covered all years; no per-year loop
             browser.close()
     except Exception as e:
         log.add("yok", SEARCH_URL, "failed", institution=inst.institution_en,
                 error=f"browser launch/session failed: {type(e).__name__}: {e}")
-    return records
+    # Result rows carry an explicit year column; when the search could not
+    # be year-partitioned this trims it to the harvest window.
+    return [r for r in records
+            if r["year"] is None or year_from <= r["year"] <= year_to]

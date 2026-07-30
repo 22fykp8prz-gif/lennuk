@@ -23,33 +23,49 @@ from .scoring import apply_scoring
 PAGE_SIZE = 100
 HARD_CAP = 10_000
 
-OPENAIRE_ORG_BASE = "https://api.openaire.eu/graph/v2/organizations"
+# The organizations lookup lives at a different base than researchProducts
+# on some deployments (api.openaire.eu/graph/v2 answered 405 in the field);
+# try the known variants in order until one answers.
+ORG_ENDPOINT_CANDIDATES = [
+    ("https://api.openaire.eu/graph/v2/organizations", "search"),
+    ("https://api.openaire.eu/graph/v2/organizations", "legalName"),
+    ("https://api.graph.openaire.eu/v2/organizations", "search"),
+    ("https://api.graph.openaire.eu/v1/organizations", "search"),
+    ("https://api.openaire.eu/graph/v1/organizations", "search"),
+]
 
 
 def resolve_org_id(name: str, client: PoliteClient, log: HarvestLog, institution: str) -> str | None:
     """Resolve an organisation name to an OpenAIRE org id so researchProducts
     can be filtered with relOrganizationId instead of a free-text search
     (free text matches a fraction of the org's actual output)."""
-    try:
-        res = client.get(OPENAIRE_ORG_BASE, params={"search": name, "pageSize": 10})
-        data = json.loads(res.text)
-    except (HarvestError, json.JSONDecodeError) as e:
-        log.add("openaire", f"{OPENAIRE_ORG_BASE} search={name}", "failed",
-                institution=institution, error=f"org lookup failed: {e}")
-        return None
-    results = data.get("results") or []
-    if not results:
-        log.add("openaire", f"{OPENAIRE_ORG_BASE} search={name}", "ok_empty",
-                institution=institution,
-                note="no organisation match; falling back to free-text search")
-        return None
-    name_cf = name.casefold()
-    best = next((o for o in results if (o.get("legalName") or "").casefold() == name_cf), results[0])
-    org_id = best.get("id")
-    log.add("openaire", f"{OPENAIRE_ORG_BASE} search={name}", "ok",
-            institution=institution, records_returned=len(results),
-            note=f"resolved org id {org_id} (legalName: {best.get('legalName')})")
-    return org_id
+    attempts = []
+    for base, param in ORG_ENDPOINT_CANDIDATES:
+        try:
+            res = client.get(base, params={param: name, "pageSize": 10})
+            data = json.loads(res.text)
+        except HarvestError as e:
+            attempts.append(f"{base}?{param}= -> {e.status or e.kind}")
+            continue
+        except json.JSONDecodeError as e:
+            attempts.append(f"{base}?{param}= -> not JSON ({e})")
+            continue
+        results = data.get("results") or []
+        if not results:
+            attempts.append(f"{base}?{param}= -> 200 but 0 matches")
+            continue
+        name_cf = name.casefold()
+        best = next((o for o in results if (o.get("legalName") or "").casefold() == name_cf), results[0])
+        org_id = best.get("id")
+        log.add("openaire", f"{base} {param}={name}", "ok",
+                institution=institution, records_returned=len(results),
+                note=f"resolved org id {org_id} (legalName: {best.get('legalName')})")
+        return org_id
+    log.add("openaire", "organizations lookup", "failed", institution=institution,
+            error="org id could not be resolved; free-text fallback in use "
+                  "(coverage will be poor)",
+            note="; ".join(attempts))
+    return None
 
 _THESIS_TYPE_HINTS = ["thes", "diplom", "disert", "dissert", "praca", "práce",
                       "darbs", "darbas", "töö", "tez", "delo", "лицензиат"]
