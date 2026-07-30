@@ -35,32 +35,40 @@ ORG_ENDPOINT_CANDIDATES = [
 ]
 
 
-def resolve_org_id(name: str, client: PoliteClient, log: HarvestLog, institution: str) -> str | None:
-    """Resolve an organisation name to an OpenAIRE org id so researchProducts
-    can be filtered with relOrganizationId instead of a free-text search
-    (free text matches a fraction of the org's actual output)."""
+def resolve_org_id(names: list[str], client: PoliteClient, log: HarvestLog, institution: str) -> str | None:
+    """Resolve an organisation to an OpenAIRE org id so researchProducts can
+    be filtered with relOrganizationId instead of a free-text search (free
+    text matches a fraction of the org's actual output).
+
+    Tries each candidate name in turn — the registry often knows an
+    institution only by its native legal name (Univerza v Ljubljani, not
+    University of Ljubljana)."""
     attempts = []
-    for base, param in ORG_ENDPOINT_CANDIDATES:
-        try:
-            res = client.get(base, params={param: name, "pageSize": 10})
-            data = json.loads(res.text)
-        except HarvestError as e:
-            attempts.append(f"{base}?{param}= -> {e.status or e.kind}")
-            continue
-        except json.JSONDecodeError as e:
-            attempts.append(f"{base}?{param}= -> not JSON ({e})")
-            continue
-        results = data.get("results") or []
-        if not results:
-            attempts.append(f"{base}?{param}= -> 200 but 0 matches")
-            continue
+    for name in names:
         name_cf = name.casefold()
-        best = next((o for o in results if (o.get("legalName") or "").casefold() == name_cf), results[0])
-        org_id = best.get("id")
-        log.add("openaire", f"{base} {param}={name}", "ok",
-                institution=institution, records_returned=len(results),
-                note=f"resolved org id {org_id} (legalName: {best.get('legalName')})")
-        return org_id
+        for base, param in ORG_ENDPOINT_CANDIDATES:
+            try:
+                res = client.get(base, params={param: name, "pageSize": 10})
+                data = json.loads(res.text)
+            except HarvestError as e:
+                attempts.append(f"{param}={name!r} @ {base} -> {e.status or e.kind}")
+                continue
+            except json.JSONDecodeError as e:
+                attempts.append(f"{param}={name!r} @ {base} -> not JSON ({e})")
+                continue
+            results = data.get("results") or []
+            if not results:
+                attempts.append(f"{param}={name!r} @ {base} -> 200 but 0 matches")
+                continue
+            best = next((o for o in results
+                         if name_cf in ((o.get("legalName") or "").casefold(),
+                                        (o.get("legalShortName") or "").casefold())),
+                        results[0])
+            org_id = best.get("id")
+            log.add("openaire", f"{base} {param}={name}", "ok",
+                    institution=institution, records_returned=len(results),
+                    note=f"resolved org id {org_id} (legalName: {best.get('legalName')})")
+            return org_id
     log.add("openaire", "organizations lookup", "failed", institution=institution,
             error="org id could not be resolved; free-text fallback in use "
                   "(coverage will be poor)",
@@ -152,7 +160,8 @@ def harvest_institution(
                 note="no OpenAIRE organisation name configured")
         return []
 
-    org_id = resolve_org_id(inst.openaire_org_name, client, log, inst.institution_en)
+    lookup_names = [n for n in (inst.openaire_org_name, inst.institution_native) if n]
+    org_id = resolve_org_id(lookup_names, client, log, inst.institution_en)
 
     records: list[dict] = []
     for year in range(year_from, year_to + 1):

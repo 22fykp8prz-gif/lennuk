@@ -154,6 +154,13 @@ def inspect(out_dir: Path, data_dir: Path) -> int:
     if len(df):
         print("By level:")
         print(df["level"].value_counts(dropna=False).to_string())
+        unknown = df[df["level"] == "unknown"]
+        if len(unknown):
+            print("\nTop raw type strings among 'unknown'-level records "
+                  "(what the sources actually call them — mapping candidates):")
+            print(unknown["level_raw"].fillna("(empty)").value_counts().head(20).to_string())
+            print("\n'unknown' records by institution:")
+            print(unknown["institution"].value_counts().head(10).to_string())
         print("\nBy source:")
         print(df["source"].map(lambda s: str(s).split(":")[0]).value_counts().to_string())
         print("\nBy year (NaN = no parseable year, kept deliberately):")
