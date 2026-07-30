@@ -23,6 +23,34 @@ from .scoring import apply_scoring
 PAGE_SIZE = 100
 HARD_CAP = 10_000
 
+OPENAIRE_ORG_BASE = "https://api.openaire.eu/graph/v2/organizations"
+
+
+def resolve_org_id(name: str, client: PoliteClient, log: HarvestLog, institution: str) -> str | None:
+    """Resolve an organisation name to an OpenAIRE org id so researchProducts
+    can be filtered with relOrganizationId instead of a free-text search
+    (free text matches a fraction of the org's actual output)."""
+    try:
+        res = client.get(OPENAIRE_ORG_BASE, params={"search": name, "pageSize": 10})
+        data = json.loads(res.text)
+    except (HarvestError, json.JSONDecodeError) as e:
+        log.add("openaire", f"{OPENAIRE_ORG_BASE} search={name}", "failed",
+                institution=institution, error=f"org lookup failed: {e}")
+        return None
+    results = data.get("results") or []
+    if not results:
+        log.add("openaire", f"{OPENAIRE_ORG_BASE} search={name}", "ok_empty",
+                institution=institution,
+                note="no organisation match; falling back to free-text search")
+        return None
+    name_cf = name.casefold()
+    best = next((o for o in results if (o.get("legalName") or "").casefold() == name_cf), results[0])
+    org_id = best.get("id")
+    log.add("openaire", f"{OPENAIRE_ORG_BASE} search={name}", "ok",
+            institution=institution, records_returned=len(results),
+            note=f"resolved org id {org_id} (legalName: {best.get('legalName')})")
+    return org_id
+
 _THESIS_TYPE_HINTS = ["thes", "diplom", "disert", "dissert", "praca", "práce",
                       "darbs", "darbas", "töö", "tez", "delo", "лицензиат"]
 
@@ -108,25 +136,29 @@ def harvest_institution(
                 note="no OpenAIRE organisation name configured")
         return []
 
+    org_id = resolve_org_id(inst.openaire_org_name, client, log, inst.institution_en)
+
     records: list[dict] = []
     for year in range(year_from, year_to + 1):
         cursor = "*"
-        endpoint_desc = f"{OPENAIRE_BASE} org={inst.openaire_org_name} year={year}"
+        endpoint_desc = f"{OPENAIRE_BASE} org={inst.openaire_org_name} year={year}" + (
+            f" relOrganizationId={org_id}" if org_id else " (free-text fallback)")
         n_year = 0
         num_found = None
         try:
             while True:
-                res = client.get(
-                    OPENAIRE_BASE,
-                    params={
-                        "type": "publication",
-                        "search": inst.openaire_org_name,
-                        "fromPublicationDate": f"{year}-01-01",
-                        "toPublicationDate": f"{year}-12-31",
-                        "pageSize": PAGE_SIZE,
-                        "cursor": cursor,
-                    },
-                )
+                params = {
+                    "type": "publication",
+                    "fromPublicationDate": f"{year}-01-01",
+                    "toPublicationDate": f"{year}-12-31",
+                    "pageSize": PAGE_SIZE,
+                    "cursor": cursor,
+                }
+                if org_id:
+                    params["relOrganizationId"] = org_id
+                else:
+                    params["search"] = inst.openaire_org_name
+                res = client.get(OPENAIRE_BASE, params=params)
                 payload = json.loads(res.text)
                 header = payload.get("header", {})
                 num_found = int(header.get("numFound", 0))

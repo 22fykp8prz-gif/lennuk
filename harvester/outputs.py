@@ -32,7 +32,10 @@ def dedupe(records: list[dict]) -> list[dict]:
         if not title:
             keyless.append(r)
             continue
-        key = (title, r.get("year"), r.get("institution"))
+        # First author is part of the key so two different people's
+        # identically-titled theses are never merged.
+        first_author = ((r.get("authors") or [""])[0] or "").casefold().strip()
+        key = (title, r.get("year"), r.get("institution"), first_author)
         cur = by_key.get(key)
         if cur is None:
             by_key[key] = r

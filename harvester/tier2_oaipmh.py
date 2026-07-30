@@ -42,6 +42,7 @@ CANDIDATE_PATHS = [
 THESIS_SET_HINTS = [
     "thes", "lõputö", "loputo", "magistr", "diplom", "dyplom", "prace",
     "práce", "zaverecne", "závěrečné", "graduation", "etd", "disert",
+    "dissert", "doktor", "rozpraw", "baigiam",
 ]
 
 
@@ -49,11 +50,13 @@ def discover_endpoint(base_url: str, client: PoliteClient, log: HarvestLog, inst
     """Probe candidate OAI paths; return {'endpoint', 'repository_name', ...}
     for the first that answers Identify, logging every failed probe."""
     base = base_url.rstrip("/")
+    probe_summary = []
     for path in CANDIDATE_PATHS:
         url = f"{base}{path}"
         try:
             res = client.get(url, params={"verb": "Identify"}, allow_error_status=True)
         except HarvestError as e:
+            probe_summary.append(f"{path}={e.kind}")
             log.add("oai-pmh", f"{url}?verb=Identify", "failed", institution=institution,
                     http_status=e.status, error=f"{e.kind}: {e}")
             if e.kind == "egress_blocked":
@@ -61,19 +64,25 @@ def discover_endpoint(base_url: str, client: PoliteClient, log: HarvestLog, inst
                 return None
             continue
         if res.status != 200:
+            probe_summary.append(f"{path}=HTTP {res.status}")
             continue
         try:
             root = etree.fromstring(res.body)
         except etree.XMLSyntaxError:
+            probe_summary.append(f"{path}=200 but not XML")
             continue
         ident = root.find(".//oai:Identify", OAI_NS)
         if ident is None:
+            probe_summary.append(f"{path}=XML but no Identify")
             continue
         name = ident.findtext("oai:repositoryName", default="", namespaces=OAI_NS)
         info = {"endpoint": url, "repository_name": name}
         log.add("oai-pmh", f"{url}?verb=Identify", "ok", institution=institution,
                 http_status=200, note=f"Identify OK: {name}")
         return info
+    log.add("oai-pmh", base_url, "failed", institution=institution,
+            error="no OAI-PMH endpoint discovered",
+            note="probe results: " + "; ".join(probe_summary))
     return None
 
 
@@ -117,6 +126,9 @@ def pick_thesis_sets(sets: list[dict]) -> list[str]:
     human (the full list is persisted next to the raw cache)."""
     picked = []
     for s in sets:
+        # dLibra advertises ":criteria" pseudo-sets that reject ListRecords.
+        if s["setSpec"].endswith(":criteria"):
+            continue
         blob = f"{s['setSpec']} {s['setName']}".casefold()
         if any(h in blob for h in THESIS_SET_HINTS):
             picked.append(s["setSpec"])
@@ -200,9 +212,7 @@ def harvest_institution(
 
     info = discover_endpoint(inst.repo_base_url, client, log, inst.institution_en)
     if info is None:
-        log.add("oai-pmh", inst.repo_base_url, "failed", institution=inst.institution_en,
-                error="no OAI-PMH endpoint discovered (all candidate paths failed)")
-        return []
+        return []  # discover_endpoint already logged the per-path probe results
     endpoint = info["endpoint"]
 
     meta_dir.mkdir(parents=True, exist_ok=True)

@@ -58,7 +58,9 @@ def run(phase: int, out_dir: Path, data_dir: Path, offline: bool = False) -> int
         if got:
             harvested.add(inst.institution_en)
 
+    n_raw = len(records)
     records = dedupe(records)
+    print(f"\n{n_raw} harvested -> {len(records)} after de-duplication")
     df = write_outputs(records, out_dir)
     log.write_csv(out_dir / "harvest_log.csv")
 
@@ -86,16 +88,104 @@ def run(phase: int, out_dir: Path, data_dir: Path, offline: bool = False) -> int
     return 0
 
 
+def probe(base_url: str, data_dir: Path) -> int:
+    """Try every known OAI path against a repository and report exactly what
+    each answered, plus scan the homepage for hints. For finding the door
+    when discovery fails."""
+    import re
+
+    from .http import HarvestError
+    from .tier2_oaipmh import CANDIDATE_PATHS
+
+    client = PoliteClient(cache_dir=data_dir / "raw")
+    base = base_url.rstrip("/")
+    print(f"Probing {base} ...\n")
+    for path in CANDIDATE_PATHS + ["/server/api", "/rest", "/api"]:
+        url = f"{base}{path}"
+        try:
+            res = client.get(url, params={"verb": "Identify"},
+                             allow_error_status=True, use_cache=False)
+        except HarvestError as e:
+            print(f"  {path:35s} -> {e.kind}: {e}")
+            continue
+        body = res.text[:300].replace("\n", " ")
+        looks_oai = "<OAI-PMH" in res.text[:2000] or "Identify" in res.text[:2000]
+        print(f"  {path:35s} -> HTTP {res.status}  {'OAI!' if looks_oai else ''}")
+        if res.status == 200 and not looks_oai:
+            print(f"      starts with: {body[:120]}")
+    print("\nScanning homepage for 'oai' mentions ...")
+    try:
+        res = client.get(base, allow_error_status=True, use_cache=False)
+        hits = sorted(set(re.findall(r"[\w/\.:\-]*oai[\w/\.\-]*", res.text, re.IGNORECASE)))
+        for h in hits[:15]:
+            print(f"  {h}")
+        if not hits:
+            print("  (no mentions found)")
+    except HarvestError as e:
+        print(f"  homepage fetch failed: {e}")
+    return 0
+
+
+def inspect(out_dir: Path, data_dir: Path) -> int:
+    """Print a quality snapshot of an existing output directory."""
+    import json
+
+    import pandas as pd
+
+    df = pd.read_parquet(out_dir / "theses.parquet")
+    print(f"{len(df)} records in {out_dir / 'theses.parquet'}\n")
+    if len(df):
+        print("By level:")
+        print(df["level"].value_counts(dropna=False).to_string())
+        print("\nBy source:")
+        print(df["source"].map(lambda s: str(s).split(":")[0]).value_counts().to_string())
+        print("\nBy year (NaN = no parseable year, kept deliberately):")
+        print(df["year"].value_counts(dropna=False).sort_index().to_string())
+        print("\nFirst 25 rows (title/year/level):")
+        view = df[["title_original", "year", "level"]].copy()
+        view["title_original"] = view["title_original"].astype(str).str.slice(0, 70)
+        print(view.head(25).to_string())
+    for meta_file in sorted((data_dir / "meta").glob("*_oai_meta.json")):
+        meta = json.loads(meta_file.read_text())
+        sets = meta.get("sets", [])
+        print(f"\n{meta_file.name}: {len(sets)} sets advertised by the repository:")
+        for s in sets[:40]:
+            print(f"  {s['setSpec']:55s} {s['setName'][:60]}")
+        if len(sets) > 40:
+            print(f"  ... and {len(sets) - 40} more")
+    return 0
+
+
 def main() -> int:
     p = argparse.ArgumentParser(prog="harvester")
     sub = p.add_subparsers(dest="cmd", required=True)
+
     runp = sub.add_parser("run", help="run a harvest phase")
     runp.add_argument("--phase", type=int, default=0)
     runp.add_argument("--out", type=Path, default=None)
     runp.add_argument("--data", type=Path, default=PROJECT_ROOT / "data")
     runp.add_argument("--offline", action="store_true",
                       help="serve only from the raw cache; any uncached fetch is a logged failure")
+
+    probep = sub.add_parser("probe", help="probe a repository base URL for its OAI endpoint")
+    probep.add_argument("base_url")
+    probep.add_argument("--data", type=Path, default=PROJECT_ROOT / "data")
+
+    sub.add_parser("yok-debug", help="open the YÖK search page and print what is on it")
+
+    insp = sub.add_parser("inspect", help="summarise an existing output directory")
+    insp.add_argument("--out", type=Path, default=PROJECT_ROOT / "output" / "phase0")
+    insp.add_argument("--data", type=Path, default=PROJECT_ROOT / "data")
+
     args = p.parse_args()
+    if args.cmd == "probe":
+        return probe(args.base_url, args.data)
+    if args.cmd == "yok-debug":
+        from . import tier3_yok
+        tier3_yok.debug_page(PROJECT_ROOT / "output" / "yok_debug")
+        return 0
+    if args.cmd == "inspect":
+        return inspect(args.out, args.data)
     out = args.out or PROJECT_ROOT / "output" / f"phase{args.phase}"
     return run(args.phase, out, args.data, offline=args.offline)
 

@@ -31,6 +31,41 @@ SEARCH_URL = YOK_BASE + "tarama.jsp"
 ACTION_PAUSE = 3.0  # seconds between page interactions — deliberately slow
 DEPARTMENT_FILTERS = ["Elektrik-Elektronik Mühendisliği", "Enerji Sistemleri Mühendisliği"]
 
+# The advanced-search entry point has been labelled differently over time.
+DETAILED_SEARCH_LABELS = ["Detaylı Tarama", "Detaylı Arama", "Gelişmiş Tarama", "Gelişmiş Arama"]
+
+
+def _click_any_label(page, labels: list[str], timeout_ms: int = 10_000) -> str | None:
+    """Try to click the first matching label, searching the page and every
+    frame (the site historically used framesets). Returns the label that
+    worked, or None."""
+    contexts = [page] + [f for f in page.frames if f != page.main_frame]
+    for ctx in contexts:
+        for label in labels:
+            loc = ctx.locator(f"text={label}")
+            try:
+                if loc.count() > 0:
+                    loc.first.click(timeout=timeout_ms)
+                    return label
+            except Exception:
+                continue
+    return None
+
+
+def _dump_debug(page, raw_dir: Path, tag: str) -> str:
+    """Save screenshot + HTML of the current page so a failing selector can
+    be diagnosed offline. Returns the path prefix."""
+    prefix = raw_dir / f"debug_{tag}"
+    try:
+        page.screenshot(path=f"{prefix}.png", full_page=True)
+    except Exception:
+        pass
+    try:
+        Path(f"{prefix}.html").write_text(page.content(), encoding="utf-8")
+    except Exception:
+        pass
+    return str(prefix)
+
 
 def _clean(s: str | None) -> str:
     return re.sub(r"\s+", " ", s or "").strip()
@@ -73,6 +108,52 @@ def parse_results_html(html: str, inst: Institution, year: int) -> list[dict]:
         )
         records.append(apply_scoring(rec))
     return records
+
+
+def debug_page(out_dir: Path) -> None:
+    """Open the YÖK search page and print an inventory of what is actually
+    on it (frames, link texts, form fields), plus save a screenshot. This is
+    what turns 'selector not found' into a concrete fix."""
+    from playwright.sync_api import sync_playwright
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=True)
+        page = browser.new_page(user_agent=USER_AGENT)
+        page.set_default_timeout(60_000)
+        page.goto(SEARCH_URL, wait_until="domcontentloaded")
+        time.sleep(5)
+
+        print(f"URL now: {page.url}")
+        print(f"Page title: {page.title()!r}")
+        print(f"Frames: {[f.url for f in page.frames]}")
+
+        def inventory(ctx, label):
+            links = [_clean(t) for t in ctx.locator("a").all_text_contents()]
+            links = [t for t in links if t][:60]
+            print(f"\n[{label}] link texts ({len(links)} shown):")
+            for t in dict.fromkeys(links):
+                print(f"  - {t}")
+            fields = ctx.locator("input, select, button")
+            n = min(fields.count(), 40)
+            print(f"[{label}] form fields ({n} shown):")
+            for i in range(n):
+                el = fields.nth(i)
+                try:
+                    print(f"  - <{el.evaluate('e => e.tagName')}> name={el.get_attribute('name')!r} "
+                          f"id={el.get_attribute('id')!r} type={el.get_attribute('type')!r} "
+                          f"value={(el.get_attribute('value') or '')[:30]!r}")
+                except Exception:
+                    pass
+
+        inventory(page, "main")
+        for f in page.frames:
+            if f != page.main_frame:
+                inventory(f, f"frame {f.url}")
+
+        prefix = _dump_debug(page, out_dir, "yok_debug")
+        print(f"\nScreenshot + HTML saved: {prefix}.png / {prefix}.html")
+        browser.close()
 
 
 def harvest_institution(
@@ -124,8 +205,17 @@ def harvest_institution(
                 try:
                     page.goto(SEARCH_URL, wait_until="domcontentloaded")
                     time.sleep(ACTION_PAUSE)
-                    # Detaylı Tarama tab
-                    page.click("text=Detaylı Tarama")
+                    # Advanced-search tab; label and framing vary, so search
+                    # every frame for every known label.
+                    clicked = _click_any_label(page, DETAILED_SEARCH_LABELS)
+                    if clicked is None:
+                        prefix = _dump_debug(page, raw_dir, f"{inst.institution_id}_{year}_entry")
+                        raise RuntimeError(
+                            "advanced-search tab not found (tried: "
+                            + ", ".join(DETAILED_SEARCH_LABELS)
+                            + f"); page snapshot saved to {prefix}.png/.html — "
+                            "run `python -m harvester yok-debug` and share its output"
+                        )
                     time.sleep(ACTION_PAUSE)
                     # University: the form uses a popup picker bound to
                     # 'Üniversite'; fall back to a plain input if present.
