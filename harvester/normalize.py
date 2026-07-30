@@ -55,23 +55,32 @@ _LEVEL_PATTERNS: list[tuple[str, str]] = [
     ("pracy magisterskiej", "master"),
     ("rozprawa doktorska", "doctoral"),
     ("rozprawy doktorskiej", "doctoral"),
+    ("rozprawy doktorskie", "doctoral"),
     ("praca doktorska", "doctoral"),
+    ("prace doktorskie", "doctoral"),
     ("pracy doktorskiej", "doctoral"),
-    # Czech / Slovak
+    # Czech / Slovak (singular + plural set-name forms; both s/z spellings
+    # of disertační occur in the wild — VSB uses the s form)
     ("bakalářská práce", "bachelor"),
+    ("bakalářské práce", "bachelor"),
     ("bakalarska praca", "bachelor"),
     ("bakalárska práca", "bachelor"),
     ("diplomová práce", "master"),
+    ("diplomové práce", "master"),
     ("diplomová práca", "master"),
     ("diplomova praca", "master"),
     ("dizertační práce", "doctoral"),
+    ("disertační práce", "doctoral"),
     ("dizertačná práca", "doctoral"),
     # Slovenian (see module docstring for the diplomsko delo caveat)
     ("magistrsko delo", "master"),
+    ("magistrska dela", "master"),
     ("magistrska naloga", "master"),
     ("diplomsko delo", "bachelor"),
+    ("diplomska dela", "bachelor"),
     ("diplomska naloga", "bachelor"),
     ("doktorska disertacija", "doctoral"),
+    ("doktorske disertacije", "doctoral"),
     # Romanian
     ("lucrare de licență", "bachelor"),
     ("lucrare de licenta", "bachelor"),
@@ -100,6 +109,29 @@ def normalize_level(raw: str | None) -> str:
         if pattern in text:
             return level
     return "unknown"
+
+
+# Set names that describe mixed-level content: a record's level must never
+# be inherited from these. ("Doktoritööd 2004 – Theses, MSc, PhD (ETD)"
+# holds master's theses too; "lõputööd" just means "final theses".)
+_MIXED_SET_HINTS = [
+    "etd", "msc", "lõputööd", "loputood", "závěrečné", "zaverecne",
+    "baigiamieji", "dyplomowe", "final theses", "graduation theses",
+]
+
+
+def level_from_set_name(set_name: str | None) -> str:
+    """Infer level from an OAI set/collection name, ONLY when the name
+    matches exactly one level and carries no mixed-content hint. Set
+    membership is source-supplied metadata, so this is inheritance, not
+    guessing — but ambiguity always resolves to unknown."""
+    if not set_name:
+        return "unknown"
+    text = set_name.casefold()
+    if any(h in text for h in _MIXED_SET_HINTS):
+        return "unknown"
+    levels = {lvl for pat, lvl in _LEVEL_PATTERNS if pat in text}
+    return levels.pop() if len(levels) == 1 else "unknown"
 
 
 _YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")

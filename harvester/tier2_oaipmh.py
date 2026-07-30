@@ -16,7 +16,7 @@ from lxml import etree
 from .config import YEAR_FROM, YEAR_TO, Institution
 from .http import HarvestError, PoliteClient
 from .log import HarvestLog
-from .normalize import extract_year, normalize_level
+from .normalize import extract_year, level_from_set_name, normalize_level
 from .schema import new_record
 from .scoring import apply_scoring
 
@@ -139,8 +139,14 @@ def _texts(md, tag: str) -> list[str]:
     return [e.text.strip() for e in md.findall(f"dc:{tag}", OAI_NS) if e.text and e.text.strip()]
 
 
-def parse_oai_dc_record(rec_el, inst: Institution, endpoint: str) -> dict | None:
-    """Map one <record> (oai_dc) to the output schema. Verbatim metadata."""
+def parse_oai_dc_record(rec_el, inst: Institution, endpoint: str,
+                        set_name: str | None = None) -> dict | None:
+    """Map one <record> (oai_dc) to the output schema. Verbatim metadata.
+
+    set_name is the human name of the OAI set the record was harvested
+    from; it fills faculty_dept and, when the record's own type is a
+    generic 'Thesis', supplies the level if (and only if) the set name is
+    level-unambiguous."""
     header = rec_el.find("oai:header", OAI_NS)
     if header is None or header.get("status") == "deleted":
         return None
@@ -169,6 +175,8 @@ def parse_oai_dc_record(rec_el, inst: Institution, endpoint: str) -> dict | None
 
     type_raw = "; ".join(types)
     level = normalize_level(type_raw)
+    if level == "unknown":
+        level = level_from_set_name(set_name)
 
     rec = new_record(
         source=f"oai-pmh:{endpoint}",
@@ -182,6 +190,7 @@ def parse_oai_dc_record(rec_el, inst: Institution, endpoint: str) -> dict | None
         level_raw=type_raw or None,
         type_raw=type_raw or None,
         institution=inst.institution_en,
+        faculty_dept=set_name,
         country=inst.country,
         language=languages[0] if languages else None,
         abstract=descriptions[0] if descriptions else None,
@@ -231,16 +240,18 @@ def harvest_institution(
 
     prefix = "oai_dc" if "oai_dc" in formats or not formats else formats[0]
     thesis_sets = pick_thesis_sets(sets) or [None]  # None = harvest whole repo
+    set_names = {s["setSpec"]: s["setName"] for s in sets}
 
     records: list[dict] = []
     for set_spec in thesis_sets:
         params = {"metadataPrefix": prefix}
         if set_spec:
             params["set"] = set_spec
+        set_name = set_names.get(set_spec) if set_spec else None
         n_before = len(records)
         try:
             for rec_el in _list_verb(endpoint, client, "ListRecords", ".//oai:record", **params):
-                rec = parse_oai_dc_record(rec_el, inst, endpoint)
+                rec = parse_oai_dc_record(rec_el, inst, endpoint, set_name=set_name)
                 if rec is None:
                     continue
                 if rec["year"] is not None and not (year_from <= rec["year"] <= year_to):
@@ -256,12 +267,12 @@ def harvest_institution(
                 institution=inst.institution_en, records_returned=n,
                 http_status=200, note=f"metadataPrefix={prefix}, years {year_from}-{year_to}")
 
-    # De-dup identical OAI identifiers across overlapping sets.
-    seen: set[str] = set()
-    deduped = []
+    # De-dup identical OAI identifiers across overlapping sets, preferring
+    # the occurrence whose set gave it a known level (a record often sits
+    # in both a mixed parent community and a precise leaf collection).
+    seen: dict[str, dict] = {}
     for r in records:
-        if r["id"] in seen:
-            continue
-        seen.add(r["id"])
-        deduped.append(r)
-    return deduped
+        cur = seen.get(r["id"])
+        if cur is None or (cur["level"] == "unknown" and r["level"] != "unknown"):
+            seen[r["id"]] = r
+    return list(seen.values())

@@ -36,6 +36,28 @@ def drop_reviews(records: list[dict]) -> tuple[list[dict], int]:
     return kept, len(records) - len(kept)
 
 
+# Records whose type says plainly "not a thesis" (articles, books,
+# conference papers riding along in mixed collections). A type carrying any
+# thesis marker always survives; an empty type always survives.
+_TYPE_THESIS_MARKERS = ("thes", "töö", "prác", "praca", "prace", "darb", "delo",
+                        "dela", "disert", "dissert", "diplom", "magistr", "bakal",
+                        "doktor", "licencj", "rozpraw", "дипл", "дисерт", "теза", "tez")
+_TYPE_NONTHESIS_MARKERS = ("article", "conferenceobject", "conference proceedings",
+                           "conference paper", "book", "recording", "dataset",
+                           "preprint", "report", "presentation", "musical")
+
+
+def drop_nonthesis(records: list[dict]) -> tuple[list[dict], int]:
+    kept = []
+    for r in records:
+        t = (r.get("type_raw") or "").casefold()
+        if t and not any(m in t for m in _TYPE_THESIS_MARKERS) \
+                and any(m in t for m in _TYPE_NONTHESIS_MARKERS):
+            continue
+        kept.append(r)
+    return kept, len(records) - len(kept)
+
+
 def dedupe(records: list[dict]) -> list[dict]:
     """Drop exact id duplicates, then collapse cross-source duplicates on
     (casefolded title, year, institution), keeping the richest source."""

@@ -1,4 +1,4 @@
-from harvester.normalize import extract_year, normalize_level
+from harvester.normalize import extract_year, level_from_set_name, normalize_level
 
 
 def test_eu_repo_semantics():
@@ -27,6 +27,20 @@ def test_unmatched_goes_to_unknown_not_guessed():
     assert normalize_level("konferenčný príspevok") == "unknown"
     assert normalize_level("") == "unknown"
     assert normalize_level(None) == "unknown"
+
+
+def test_spelling_and_plural_variants():
+    assert normalize_level("Disertační práce") == "doctoral"  # s-spelling (VSB)
+    assert normalize_level("diplomové práce") == "master"     # plural set form
+
+
+def test_level_from_set_name():
+    assert level_from_set_name("Magistritööd") == "master"
+    assert level_from_set_name("bakalářské práce") == "bachelor"
+    # Mixed-content set names must never label records:
+    assert level_from_set_name("Doktoritööd 2004 – Theses, MSc, PhD (ETD)") == "unknown"
+    assert level_from_set_name("Arvutitehnika õppekava lõputööd") == "unknown"
+    assert level_from_set_name(None) == "unknown"
 
 
 def test_extract_year():
