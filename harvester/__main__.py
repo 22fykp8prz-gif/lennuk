@@ -38,20 +38,32 @@ def run(phase: int, out_dir: Path, data_dir: Path, offline: bool = False) -> int
         print(f"=== {inst.country} / {inst.institution_en} ===")
         n_before = len(records)
 
+        # Each tier is fenced per institution: one unexpected failure must
+        # be a logged hole, never the end of a multi-hour run.
+        def _fenced(tier_name, fn):
+            try:
+                return fn()
+            except Exception as e:
+                log.add(tier_name, inst.repo_base_url or tier_name, "failed",
+                        institution=inst.institution_en,
+                        error=f"unexpected {type(e).__name__}: {e}")
+                print(f"    !! {tier_name} failed unexpectedly: {e}")
+                return []
+
         # Tier 1 — OpenAIRE first pass (not for YÖK-only institutions,
         # Turkish theses are not aggregated there in useful numbers).
         if inst.national_system != "yok":
-            records += tier1_openaire.harvest_institution(inst, client, log)
+            records += _fenced("openaire", lambda: tier1_openaire.harvest_institution(inst, client, log))
 
         # Tier 2 — direct OAI-PMH where a repository is configured.
         if inst.repo_base_url:
-            records += tier2_oaipmh.harvest_institution(
-                inst, client, log, meta_dir=data_dir / "meta")
+            records += _fenced("oai-pmh", lambda: tier2_oaipmh.harvest_institution(
+                inst, client, log, meta_dir=data_dir / "meta"))
 
         # Tier 3 — YÖK browser module, its own log file as well.
         if inst.national_system == "yok":
-            records += tier3_yok.harvest_institution(
-                inst, log, raw_dir=data_dir / "raw" / "yok")
+            records += _fenced("yok", lambda: tier3_yok.harvest_institution(
+                inst, log, raw_dir=data_dir / "raw" / "yok"))
 
         got = len(records) - n_before
         print(f"    {got} records")
