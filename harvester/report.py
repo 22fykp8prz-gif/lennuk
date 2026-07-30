@@ -38,14 +38,15 @@ def write_coverage_report(
         lines += [
             "## Per institution",
             "",
-            "| country | institution | records | year span | with abstract | with advisor | with full text | with English title |",
-            "|---|---|---|---|---|---|---|---|",
+            "| country | institution | records | master's | year span | with abstract | with advisor | with full text | with English title |",
+            "|---|---|---|---|---|---|---|---|---|",
         ]
         for (country, institution), g in df.groupby(["country", "institution"], dropna=False):
             years = g["year"].dropna()
             span = f"{int(years.min())}–{int(years.max())}" if len(years) else "n/a"
+            n_master = int((g["level"] == "master").sum())
             lines.append(
-                f"| {country} | {institution} | {len(g)} | {span} | "
+                f"| {country} | {institution} | {len(g)} | {n_master} | {span} | "
                 f"{_share(g['abstract'])} | {_share(g['advisor'])} | "
                 f"{_share(g['url_fulltext'])} | {_share(g['title_en'])} |"
             )

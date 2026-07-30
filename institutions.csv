@@ -8,7 +8,7 @@ LT,vilniustech,Vilnius Gediminas Technical University,Vilniaus Gedimino techniko
 LT,vu,Vilnius University,Vilniaus universitetas,A,,elaba,Vilnius University,elaba,,0,Feeds eLABa
 PL,pw,Warsaw University of Technology,Politechnika Warszawska,A,https://repo.pw.edu.pl,omega-psir,Warsaw University of Technology,,,0,OMEGA-PSIR software; OAI path differs from DSpace
 PL,agh,AGH University of Krakow,Akademia Górniczo-Hutnicza,A,https://repozytorium.agh.edu.pl,unknown,AGH University of Science and Technology,,,0,Endpoint unverified
-PL,polsl,Silesian University of Technology,Politechnika Śląska,A,https://delibra.bg.polsl.pl,dlibra,Silesian University of Technology,,,1,Phase 0 pilot; dLibra software
+PL,polsl,Silesian University of Technology,Politechnika Śląska,A,https://delibra.bg.polsl.pl,dlibra,Silesian University of Technology,,,1,Phase 0 pilot; dLibra software; repository holds doctoral+habilitation only — master's theses are in closed APD systems (Poland-wide), gaps.csv route for master's
 PL,pg,Gdansk University of Technology,Politechnika Gdańska,A,https://mostwiedzy.pl,mostwiedzy,Gdansk University of Technology,,,0,MOST Wiedzy platform
 CZ,cvut,Czech Technical University in Prague,České vysoké učení technické v Praze,A,https://dspace.cvut.cz,dspace,Czech Technical University in Prague,theses_cz,,0,
 CZ,vut,Brno University of Technology,Vysoké učení technické v Brně,A,https://dspace.vut.cz,dspace,Brno University of Technology,theses_cz,,0,Endpoint unverified
