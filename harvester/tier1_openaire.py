@@ -44,6 +44,19 @@ def resolve_org_id(names: list[str], client: PoliteClient, log: HarvestLog, inst
     institution only by its native legal name (Univerza v Ljubljani, not
     University of Ljubljana)."""
     attempts = []
+    last_resort = None
+
+    def rank(org, name_cf):
+        # 0 = canonical registry entry (openorgs id) with exact name match,
+        # 1 = canonical, 2 = exact name match only, 3 = anything else.
+        # pending_org_/ta0_ ids are unverified duplicates or sub-entities
+        # (departments, presses) that carry few or zero products — the field
+        # failure mode that starved Ljubljana, Tartu and Vilnius University.
+        exact = name_cf in ((org.get("legalName") or "").casefold(),
+                            (org.get("legalShortName") or "").casefold())
+        canonical = str(org.get("id") or "").startswith("openorgs")
+        return 0 if (exact and canonical) else 1 if canonical else 2 if exact else 3
+
     for name in names:
         name_cf = name.casefold()
         for base, param in ORG_ENDPOINT_CANDIDATES:
@@ -60,15 +73,24 @@ def resolve_org_id(names: list[str], client: PoliteClient, log: HarvestLog, inst
             if not results:
                 attempts.append(f"{param}={name!r} @ {base} -> 200 but 0 matches")
                 continue
-            best = next((o for o in results
-                         if name_cf in ((o.get("legalName") or "").casefold(),
-                                        (o.get("legalShortName") or "").casefold())),
-                        results[0])
-            org_id = best.get("id")
-            log.add("openaire", f"{base} {param}={name}", "ok",
-                    institution=institution, records_returned=len(results),
-                    note=f"resolved org id {org_id} (legalName: {best.get('legalName')})")
-            return org_id
+            best = min(results, key=lambda o: rank(o, name_cf))
+            if rank(best, name_cf) <= 2:
+                org_id = best.get("id")
+                log.add("openaire", f"{base} {param}={name}", "ok",
+                        institution=institution, records_returned=len(results),
+                        note=f"resolved org id {org_id} (legalName: {best.get('legalName')})")
+                return org_id
+            # Neither canonical nor exact: remember it, keep looking.
+            if last_resort is None:
+                last_resort = (best, f"{base} {param}={name}")
+            attempts.append(f"{param}={name!r} @ {base} -> only weak match "
+                            f"({best.get('id')}: {best.get('legalName')})")
+    if last_resort is not None:
+        best, endpoint_desc = last_resort
+        log.add("openaire", endpoint_desc, "ok", institution=institution,
+                note=f"resolved org id {best.get('id')} (weak match, legalName: "
+                     f"{best.get('legalName')}) — verify against coverage")
+        return best.get("id")
     log.add("openaire", "organizations lookup", "failed", institution=institution,
             error="org id could not be resolved; free-text fallback in use "
                   "(coverage will be poor)",
@@ -162,6 +184,24 @@ def harvest_institution(
 
     lookup_names = [n for n in (inst.openaire_org_name, inst.institution_native) if n]
     org_id = resolve_org_id(lookup_names, client, log, inst.institution_en)
+
+    # Sanity-check the resolved identity: a wrong pick (sub-entity, press,
+    # pending duplicate) typically carries zero products — free text beats it.
+    if org_id:
+        try:
+            res = client.get(OPENAIRE_BASE, params={
+                "type": "publication", "relOrganizationId": org_id,
+                "fromPublicationDate": f"{year_from}-01-01",
+                "toPublicationDate": f"{year_to}-12-31", "pageSize": 1})
+            n_total = int(json.loads(res.text).get("header", {}).get("numFound", 0))
+            if n_total == 0:
+                log.add("openaire", f"org sanity check {org_id}", "ok_empty",
+                        institution=inst.institution_en,
+                        note="resolved org id matches 0 products in the harvest "
+                             "window; discarding it, free-text fallback in use")
+                org_id = None
+        except (HarvestError, ValueError, json.JSONDecodeError):
+            pass  # inconclusive check never blocks the harvest
 
     records: list[dict] = []
     for year in range(year_from, year_to + 1):
