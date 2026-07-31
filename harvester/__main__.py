@@ -11,7 +11,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import csv
+
 from .config import PROJECT_ROOT, load_institutions
+from .flags import FLAG_NAMES, FlagMatcher
 from .gaps import write_gaps
 from .http import PoliteClient
 from .log import HarvestLog
@@ -82,6 +85,7 @@ def run(phase: int, out_dir: Path, data_dir: Path, offline: bool = False) -> int
     records = dedupe(records)
     print(f"\n{n_raw} harvested -> {n_reviews} reviews + {n_nonthesis} non-thesis "
           f"records dropped -> {len(records)} after de-duplication")
+    apply_market_flags(records, out_dir)
     df = write_outputs(records, out_dir)
     log.write_csv(out_dir / "harvest_log.csv")
 
@@ -106,6 +110,59 @@ def run(phase: int, out_dir: Path, data_dir: Path, offline: bool = False) -> int
 
     print(f"\n{len(df)} records -> {out_dir}/theses.parquet")
     print(f"{failures} failed source attempts -> {out_dir}/harvest_log.csv")
+    return 0
+
+
+def apply_market_flags(records: list[dict], out_dir: Path) -> None:
+    """Flag every record and write the audit trail (which flags fired and
+    which terms triggered them — how a bad stem gets spotted)."""
+    matcher = FlagMatcher()
+    audit_rows = []
+    counts = {name: 0 for name in FLAG_NAMES}
+    for rec in records:
+        fired = matcher.flag_record(rec)
+        rec["market_flags"] = sorted(fired)
+        rec["flags_version"] = matcher.version
+        for flag, terms in fired.items():
+            counts[flag] += 1
+            audit_rows.append({
+                "id": rec["id"],
+                "title": (rec.get("title_original") or "")[:80],
+                "flag": flag,
+                "terms": "|".join(terms),
+            })
+    out_dir.mkdir(parents=True, exist_ok=True)
+    with open(out_dir / "flag_audit.csv", "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=["id", "title", "flag", "terms"])
+        w.writeheader()
+        w.writerows(audit_rows)
+    print(f"market flags (yaml v{matcher.version}): "
+          + ", ".join(f"{k}={v}" for k, v in counts.items())
+          + f" -> {out_dir / 'flag_audit.csv'}")
+
+
+def reflag(out_dir: Path) -> int:
+    """Re-apply the current thesis_domain_flags.yaml to an existing output
+    directory without re-harvesting anything."""
+    import pandas as pd
+
+    from .outputs import write_outputs
+    from .schema import COLUMNS
+
+    df = pd.read_parquet(out_dir / "theses.parquet")
+    for col in ("market_flags", "flags_version"):
+        if col not in df.columns:
+            df[col] = None
+    records = df.to_dict("records")
+    for rec in records:  # parquet round-trip: lists may come back as arrays
+        for c in ("authors", "keywords", "national_flags", "domain_flags"):
+            v = rec.get(c)
+            rec[c] = list(v) if v is not None and not isinstance(v, list) else (v or [])
+        for c in COLUMNS:
+            rec.setdefault(c, None)
+    apply_market_flags(records, out_dir)
+    write_outputs(records, out_dir)
+    print(f"{len(records)} records re-flagged in {out_dir}")
     return 0
 
 
@@ -205,7 +262,13 @@ def main() -> int:
     insp.add_argument("--out", type=Path, default=PROJECT_ROOT / "output" / "phase0")
     insp.add_argument("--data", type=Path, default=PROJECT_ROOT / "data")
 
+    reflagp = sub.add_parser(
+        "reflag", help="re-apply thesis_domain_flags.yaml to an existing dataset")
+    reflagp.add_argument("--out", type=Path, default=PROJECT_ROOT / "output" / "phase1")
+
     args = p.parse_args()
+    if args.cmd == "reflag":
+        return reflag(args.out)
     if args.cmd == "probe":
         return probe(args.base_url, args.data)
     if args.cmd == "yok-debug":

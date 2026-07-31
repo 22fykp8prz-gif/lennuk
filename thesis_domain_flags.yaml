@@ -1,0 +1,379 @@
+# thesis_domain_flags.yaml — v1, 2026-07-30
+#
+# Four independent boolean flags for the Lennuk thesis harvester:
+#   frequency_reserves, capacity_market, adequacy_selfsufficiency, market_design
+#
+# Matching rules (implemented in harvester/flags.py):
+#  - stems are substrings, matched after Unicode casefold + Latin-only
+#    diacritic stripping (Cyrillic untouched); written here in natural
+#    orthography so native speakers can review them
+#  - acronyms match with word boundaries on the ORIGINAL text,
+#    case-sensitive as listed plus a fully-uppercased variant
+#  - weak stems only count when an energy_context stem also appears
+#  - overlap between flags is intended; do not dedupe
+#
+# Review notes per country live in the companion reference document.
+
+version: 1
+date: "2026-07-30"
+
+energy_context:
+  stems:
+    - elektr        # electricity family: ET/LV/LT/PL/CZ/SK/SL/RO/TR (elektrik)
+    - energ         # energy/energia/energie/enerģija/energetika...
+    - enerji        # TR
+    - power
+    - grid
+    - електр        # BG (Cyrillic, no diacritic stripping)
+    - енерг         # BG
+
+flags:
+  frequency_reserves:
+    acronyms:
+      - FCR
+      - aFRR
+      - mFRR
+      - FRR
+      - FFR
+      - FCR-N        # Nordic products, post-desync Baltic theses
+      - FCR-D
+      - PICASSO
+      - MARI
+      - TERRE
+      - PpS          # CZ podpůrné služby
+      - SVR          # CZ služby výkonové rovnováhy — drop if noisy (see notes)
+      - DGP          # TR dengeleme güç piyasası
+      - PFK          # TR primary frequency control
+      - SFK          # TR secondary frequency control
+    strong:
+      # EN
+      - frequency reserve
+      - frequency containment
+      - frequency restoration
+      - ancillary service
+      - balancing market
+      - balancing energy
+      - balancing service
+      - primary frequency control
+      - secondary frequency control
+      - tertiary regulation
+      # ET
+      - sagedusreserv
+      - primaarreserv
+      - sekundaarreserv
+      - sageduse hoidmise
+      - taastamisreserv
+      - bilansiener
+      # LV
+      - balansēšan
+      - frekvences rezerv
+      # LT
+      - dažnio rezerv
+      - dažnio atkūrimo
+      - balansavimo energ
+      - balansavimo rink
+      - pirminis rezerv
+      - antrinis rezerv
+      - tretinis rezerv
+      # PL
+      - regulacja pierwotna
+      - regulacja wtórna
+      - usługi systemowe
+      - usług systemowych
+      - rynek bilansując
+      - rynku bilansując
+      - energia bilansując
+      # CZ
+      - podpůrné služby
+      - podpůrných služeb
+      - služby výkonové rovnováhy
+      - služeb výkonové rovnováhy
+      - regulační záloh
+      - regulační energie
+      - primární regulace
+      - sekundární regulace
+      - terciární regulace
+      # SK
+      - podporné služby
+      - podporných služieb
+      - regulačná elektrina
+      - primárna regulácia
+      - sekundárna regulácia
+      - terciárna regulácia
+      # SL
+      - izravnalni trg
+      - izravnalnega trga
+      - izravnalna energija
+      - sistemske storitve
+      - sistemskih storitev
+      # RO
+      - servicii de sistem
+      - serviciilor de sistem
+      - reglaj primar
+      - reglaj secundar
+      - reglaj terțiar
+      - piața de echilibrare
+      - pieței de echilibrare
+      - energie de echilibrare
+      - rezerve de reglaj
+      # BG (Cyrillic)
+      - балансиращ пазар
+      - балансираща енергия
+      - първично регулиране
+      - вторично регулиране
+      - третично регулиране
+      - системни услуги
+      # TR
+      - dengeleme güç piyasası
+      - primer frekans
+      - sekonder frekans
+      - yan hizmet
+    weak:
+      - tugiteenus      # ET — also generic "support service"
+      - dengeleme       # TR — also generic "balancing"
+      - jaudas rezerve  # LV — straddles reserves and adequacy
+
+  capacity_market:
+    acronyms:
+      - CRM
+      - CONE           # cost of new entry — collides with the ordinary word
+    strong:
+      # EN
+      - capacity market
+      - capacity mechanism
+      - capacity remuneration
+      - capacity auction
+      - capacity payment
+      - capacity obligation
+      - strategic reserve
+      - reliability option
+      - missing money
+      - de-rating
+      # PL — strongest signal in the corpus; full phrases only (never bare
+      # "mocow": it matches mechanical "mocowanie")
+      - rynek mocy
+      - rynku mocy
+      - rynkiem mocy
+      - obowiązek mocowy
+      - obowiązku mocowego
+      - aukcja rynku mocy
+      - aukcje rynku mocy
+      - opłata mocowa
+      - opłaty mocowej
+      # ET
+      - võimsusturg
+      - võimsusmehhanism
+      - strateegiline reserv
+      # LV
+      - jaudas tirg
+      - jaudas mehānism
+      # LT — both galios and pajėgumų families
+      - galios rink
+      - pajėgumų rink
+      - pajėgumų mechanizm
+      - pajėgumų užtikrin
+      # CZ
+      - kapacitní trh
+      - kapacitní mechanism
+      - kapacitní platb
+      # SK
+      - kapacitný trh
+      - kapacitný mechanizm
+      # SL
+      - trg zmogljivosti
+      - mehanizem zmogljivosti
+      # RO
+      - piață de capacitate
+      - piața de capacitate
+      - mecanism de capacitate
+      - plăți de capacitate
+      # BG (Cyrillic) — "за капацитет" catches пазар/механизъм/плащания за капацитет
+      - студен резерв
+      - за капацитет
+      # TR
+      - kapasite mekanizması
+      - kapasite ödeme
+    weak:
+      - rezerwa mocy    # PL — PSE operational reserve straddles reserves/adequacy
+
+  adequacy_selfsufficiency:
+    acronyms:
+      - LOLE
+      - LOLP
+      - EENS
+      - VOLL
+      - ERAA
+      - MAF            # collides with ordinary words — uppercase-only, watch it
+    strong:
+      # EN
+      - resource adequacy
+      - generation adequacy
+      - system adequacy
+      - security of supply
+      - self-sufficiency
+      - import dependence
+      - dispatchable capacity
+      - Dunkelflaute
+      - loss of load
+      # ET
+      - varustuskindlus
+      - isevarustatus
+      - impordisõltuvus
+      - juhitav võimsus
+      - juhitavad võimsused
+      # LV
+      - apgādes drošum
+      - pietiekamīb
+      - pašpietiekamīb
+      # LT
+      - tiekimo saugum
+      - pakankamum
+      - apsirūpinim
+      - importo priklausomyb
+      # PL
+      - bezpieczeństwo dostaw
+      - bezpieczeństwa dostaw
+      - wystarczalność
+      - wystarczalności
+      - samowystarczaln
+      # CZ
+      - zdrojová přiměřenost
+      - zdrojové přiměřenosti
+      - bezpečnost dodávek
+      - soběstačnost
+      # SK
+      - zdrojová primeranosť
+      - bezpečnosť dodávok
+      - sebestačnosť
+      # SL
+      - zadostnost vir
+      - zanesljivost oskrbe
+      - samozadostnost
+      # RO — adecvanța is Transelectrica's own term, high precision
+      - adecvanț
+      - adecvar
+      - siguranța aliment
+      - siguranței aliment
+      - autosuficienț
+      - dependenț de import
+      # BG (Cyrillic)
+      - адекватност
+      - сигурност на доставк
+      - енергийна независимост
+      # TR
+      - arz güvenliği
+      - dışa bağımlılık
+    weak:
+      - piisavus        # ET — also generic "sufficiency" — watch after first run
+      - přiměřenost     # CZ — also legal "reasonableness"
+      - primeranosť     # SK — same collision
+      - zadostnost      # SL — generic without "virov"
+      - yeterlili       # TR — also generic "competence/adequacy"
+      - energy security # EN — used loosely across disciplines
+
+  market_design:
+    acronyms:
+      - SDAC
+      - SIDC
+      - EUPHEMIA
+      - FBMC
+      - CfD
+      - GÖP            # TR day-ahead market
+      - GİP            # TR intraday market
+      - PTF            # TR market clearing price
+      - YEKDEM         # TR support scheme
+      # PZU deliberately excluded: also Poland's largest insurer (see notes);
+      # RO day-ahead is covered by the spelled-out "ziua următoare"
+    strong:
+      # EN
+      - day-ahead market
+      - day ahead market
+      - intraday market
+      - market coupling
+      - flow-based
+      - bidding zone
+      - zonal pricing
+      - nodal pricing
+      - locational marginal
+      - scarcity pricing
+      - imbalance settlement
+      - congestion management
+      - redispatch
+      - contract for difference
+      - contracts for difference
+      - feed-in tariff
+      - feed-in premium
+      - merit order
+      # ET — otseliin: direct line, no-grid-fee supply model
+      - päev-ette
+      - päevasisene turg
+      - hinnapiirkon
+      - otseliin
+      # LV
+      - nākamās dienas tirg
+      - tirgu sasaist
+      # LT
+      - kitos paros
+      - einamosios paros
+      - rinkų susiejim
+      - kainų zon
+      # PL
+      - rynek dnia następnego
+      - rynku dnia następnego
+      - rynek dnia bieżącego
+      - łączenie rynków
+      - ceny węzłowe
+      - cen węzłowych
+      - strefy cenowe
+      - stref cenowych
+      - redysponowanie
+      - zarządzanie ograniczeniami
+      - kontrakt różnicowy
+      - kontrakty różnicowe
+      # CZ
+      - denní trh
+      - denního trhu
+      - vnitrodenní trh
+      - propojení trhů
+      - nabídkov zón
+      - zúčtování odchylek
+      - redispečink
+      - výkupní cen
+      # SK
+      - denný trh
+      - vnútrodenný trh
+      - prepojenie trhov
+      - zúčtovanie odchýlok
+      - redispečing
+      # SL
+      - trg za dan vnaprej
+      - znotrajdnevni trg
+      - spajanje trgov
+      - obračun odstopanj
+      # RO
+      - ziua următoare
+      - zilei următoare
+      - intrazilnic
+      - cuplarea pieț
+      - zone de ofertare
+      - prețuri nodale
+      - pentru diferenț
+      # BG (Cyrillic)
+      - пазар ден напред
+      - в рамките на деня
+      - пазарно обединение
+      - тръжни зони
+      - небаланс
+      - договори за разлика
+      # TR
+      - gün öncesi piyasa
+      - gün içi piyasa
+      - piyasa takas fiyatı
+      - fark sözleşme
+    weak:
+      - liberali        # liberalization family across all Latin-script languages
+      - imbalance       # EN — noisy candidate, watch after first run
+      - trgovaln        # SL — trading/bidding areas, generic alone
+      - serbestleş      # TR — liberalization, generic alone
+      - dengesizlik     # TR — imbalance, generic alone
+      - dezechilibr     # RO — imbalance, generic alone

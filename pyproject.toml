@@ -10,6 +10,7 @@ dependencies = [
     "lxml>=5.0",
     "python-dateutil>=2.8",
     "playwright>=1.40",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]

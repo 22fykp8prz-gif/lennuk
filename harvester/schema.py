@@ -30,11 +30,13 @@ COLUMNS = [
     "relevance_score",
     "national_flags",
     "domain_flags",
+    "market_flags",
+    "flags_version",
     "type_raw",
     "country",
 ]
 
-LIST_COLUMNS = {"authors", "keywords", "national_flags", "domain_flags"}
+LIST_COLUMNS = {"authors", "keywords", "national_flags", "domain_flags", "market_flags"}
 
 
 def make_id(source: str, native_id: str) -> str:

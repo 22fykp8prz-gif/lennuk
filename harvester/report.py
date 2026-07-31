@@ -65,6 +65,14 @@ def write_coverage_report(
             f"- relevance_score >= 3: {int((df['relevance_score'] >= 3).sum())}",
             "",
         ]
+        if "market_flags" in df.columns:
+            mf = df["market_flags"].map(lambda v: list(v) if v is not None else [])
+            lines += ["### Market-domain flags", ""]
+            for flag in ("frequency_reserves", "capacity_market",
+                         "adequacy_selfsufficiency", "market_design"):
+                lines.append(f"- `{flag}`: {int(mf.map(lambda v: flag in v).sum())}")
+            lines.append(f"- any market flag: {int(mf.map(len).gt(0).sum())}")
+            lines.append("")
 
     lines += ["## Source outcomes (harvest log summary)", ""]
     by_outcome: dict[str, int] = {}
