@@ -1,4 +1,13 @@
-# thesis_domain_flags.yaml — v1, 2026-07-30
+# thesis_domain_flags.yaml — v2, 2026-07-31
+# v2: tuned after the first 82k-record audit (flag_audit.csv, yaml v1):
+#   - dropped acronyms CfD (matched CFD, computational fluid dynamics, 440x),
+#     CRM (customer relationship management), MAF (minor allele frequency)
+#   - energy_context 'power' replaced with phrases (matched emPOWERment, Power BI)
+#   - demoted to weak: self-sufficiency, soběstačnost, system adequacy
+#     (matched pension-system adequacy), pakankamum
+#   - removed: 'energy security' (geopolitics flood; strong 'security of
+#     supply' remains), 'imbalance' (class imbalance; 'imbalance settlement'
+#     remains), 'liberali' narrowed to liberaliza/liberalisation
 #
 # Four independent boolean flags for the Lennuk thesis harvester:
 #   frequency_reserves, capacity_market, adequacy_selfsufficiency, market_design
@@ -14,15 +23,20 @@
 #
 # Review notes per country live in the companion reference document.
 
-version: 1
-date: "2026-07-30"
+version: 2
+date: "2026-07-31"
 
 energy_context:
   stems:
     - elektr        # electricity family: ET/LV/LT/PL/CZ/SK/SL/RO/TR (elektrik)
     - energ         # energy/energia/energie/enerģija/energetika...
     - enerji        # TR
-    - power
+    - power syst    # bare 'power' matched emPOWERment and Power BI (v1 audit)
+    - power market
+    - power plant
+    - power grid
+    - power sector
+    - electric power
     - grid
     - електр        # BG (Cyrillic, no diacritic stripping)
     - енерг         # BG
@@ -135,7 +149,8 @@ flags:
 
   capacity_market:
     acronyms:
-      - CRM
+      # CRM dropped in v2 (customer relationship management); spelled-out
+      # capacity remuneration stems carry the signal
       - CONE           # cost of new entry — collides with the ordinary word
     strong:
       # EN
@@ -203,14 +218,12 @@ flags:
       - EENS
       - VOLL
       - ERAA
-      - MAF            # collides with ordinary words — uppercase-only, watch it
+      # MAF dropped in v2: matched minor allele frequency in genomics theses
     strong:
       # EN
       - resource adequacy
       - generation adequacy
-      - system adequacy
       - security of supply
-      - self-sufficiency
       - import dependence
       - dispatchable capacity
       - Dunkelflaute
@@ -227,7 +240,6 @@ flags:
       - pašpietiekamīb
       # LT
       - tiekimo saugum
-      - pakankamum
       - apsirūpinim
       - importo priklausomyb
       # PL
@@ -240,7 +252,6 @@ flags:
       - zdrojová přiměřenost
       - zdrojové přiměřenosti
       - bezpečnost dodávek
-      - soběstačnost
       # SK
       - zdrojová primeranosť
       - bezpečnosť dodávok
@@ -269,7 +280,12 @@ flags:
       - primeranosť     # SK — same collision
       - zadostnost      # SL — generic without "virov"
       - yeterlili       # TR — also generic "competence/adequacy"
-      - energy security # EN — used loosely across disciplines
+      - self-sufficiency  # v2: municipal/food self-sufficiency flooded in
+      - soběstačnost      # v2: same, 129 hits mostly non-energy
+      - system adequacy   # v2: matched pension-system adequacy
+      - pakankamum        # v2: generic LT sufficiency (pharmacy theses)
+      # 'energy security' removed in v2: geopolitics theses trivially satisfy
+      # the energy_context gate; strong 'security of supply' remains
 
   market_design:
     acronyms:
@@ -277,7 +293,9 @@ flags:
       - SIDC
       - EUPHEMIA
       - FBMC
-      - CfD
+      # CfD dropped in v2: uppercase variant CFD = computational fluid
+      # dynamics, the single noisiest term of the v1 run (440 hits);
+      # spelled-out contract-for-difference stems carry the signal
       - GÖP            # TR day-ahead market
       - GİP            # TR intraday market
       - PTF            # TR market clearing price
@@ -371,8 +389,12 @@ flags:
       - piyasa takas fiyatı
       - fark sözleşme
     weak:
-      - liberali        # liberalization family across all Latin-script languages
-      - imbalance       # EN — noisy candidate, watch after first run
+      # v2: 'liberali' narrowed (matched liberalism in political theses);
+      # -iza/-isation forms exclude the ideology, keep the market process
+      - liberaliza
+      - liberalisation
+      # v2: 'imbalance' removed (class imbalance in ML, geopolitical
+      # imbalance); strong 'imbalance settlement' remains
       - trgovaln        # SL — trading/bidding areas, generic alone
       - serbestleş      # TR — liberalization, generic alone
       - dengesizlik     # TR — imbalance, generic alone
