@@ -35,6 +35,42 @@ def _as_list(v) -> list:
     return list(v)
 
 
+def resolve_landing_pdf(html: str, base_url: str) -> tuple[str | None, str]:
+    """Find the thesis PDF URL on a repository landing page.
+
+    Order of trust: the citation_pdf_url meta tag (publisher-declared,
+    machine-readable, exactly for this purpose), else a SINGLE unambiguous
+    bitstream .pdf link. Multiple candidate links (Czech pages list referee
+    reports as separate PDFs) are reported as ambiguous — never guessed.
+    Returns (url or None, reason).
+    """
+    from urllib.parse import urljoin
+
+    from lxml import html as lhtml
+
+    try:
+        doc = lhtml.fromstring(html)
+    except Exception:
+        return None, "unparseable_html"
+
+    for meta in doc.xpath("//meta[@name='citation_pdf_url']"):
+        content = (meta.get("content") or "").strip()
+        if content:
+            return urljoin(base_url, content), "citation_pdf_url"
+
+    candidates = []
+    for a in doc.xpath("//a[@href]"):
+        href = a.get("href") or ""
+        if ".pdf" in href.lower() and "bitstream" in href.lower():
+            candidates.append(urljoin(base_url, href))
+    candidates = list(dict.fromkeys(candidates))
+    if len(candidates) == 1:
+        return candidates[0], "single_bitstream_link"
+    if len(candidates) > 1:
+        return None, f"ambiguous ({len(candidates)} pdf links)"
+    return None, "no_pdf_link_found"
+
+
 def select_records(df: pd.DataFrame, levels: list[str], selector: str) -> pd.DataFrame:
     """Filter to the download set. selector: market | domain | either."""
     picked = df[df["level"].isin(levels)].copy()
@@ -80,40 +116,63 @@ def fetch_pdfs(
             "bytes": nbytes,
         })
 
-    for rec in subset.to_dict("records"):
-        url = rec.get("url_fulltext")
-        url = url if isinstance(url, str) and url.startswith("http") else None
-        landing = rec.get("url_landing")
-        if url is None:
-            if isinstance(landing, str) and landing.startswith("http"):
-                log_row(rec, "landing_only", url=landing)
-            else:
-                log_row(rec, "no_url")
-            continue
-
-        target = (dest_dir / _slug(rec.get("country") or "xx")
-                  / _slug(rec.get("institution") or "unknown") / f"{rec['id']}.pdf")
-        if target.exists():
-            log_row(rec, "already_present", url=url, path=str(target),
-                    nbytes=target.stat().st_size)
-            continue
-        if dry_run:
-            log_row(rec, "would_fetch", url=url)
-            continue
-
+    def download(rec, url, target, outcome_label):
         try:
             res = client.get(url, timeout=120, use_cache=False, skip_robots=False)
         except HarvestError as e:
             log_row(rec, f"failed ({e.kind})", url=url)
-            continue
+            return
         if not res.body.startswith(b"%PDF"):
             # An HTML login/consent page is not the thesis; never save it as one.
             log_row(rec, "not_pdf", url=url)
-            continue
+            return
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(res.body)
-        log_row(rec, "downloaded", url=url, path=str(target), nbytes=len(res.body))
+        log_row(rec, outcome_label, url=url, path=str(target), nbytes=len(res.body))
         print(f"  {rec['id']} <- {url} ({len(res.body)//1024} KiB)")
+
+    for rec in subset.to_dict("records"):
+        url = rec.get("url_fulltext")
+        url = url if isinstance(url, str) and url.startswith("http") else None
+        landing = rec.get("url_landing")
+        landing = landing if isinstance(landing, str) and landing.startswith("http") else None
+
+        target = (dest_dir / _slug(rec.get("country") or "xx")
+                  / _slug(rec.get("institution") or "unknown") / f"{rec['id']}.pdf")
+        if target.exists():
+            log_row(rec, "already_present", url=url or landing or "", path=str(target),
+                    nbytes=target.stat().st_size)
+            continue
+
+        if url is not None:
+            if dry_run:
+                log_row(rec, "would_fetch", url=url)
+            else:
+                download(rec, url, target, "downloaded")
+            continue
+
+        if landing is None:
+            log_row(rec, "no_url")
+            continue
+
+        # Landing page: resolve the declared PDF, never guess among many.
+        if dry_run:
+            log_row(rec, "would_resolve_landing", url=landing)
+            continue
+        try:
+            page = client.get(landing, timeout=60, use_cache=False, skip_robots=False,
+                              allow_error_status=True)
+        except HarvestError as e:
+            log_row(rec, f"landing_fetch_failed ({e.kind})", url=landing)
+            continue
+        if page.status != 200:
+            log_row(rec, f"landing_fetch_failed (HTTP {page.status})", url=landing)
+            continue
+        pdf_url, reason = resolve_landing_pdf(page.text, landing)
+        if pdf_url is None:
+            log_row(rec, f"landing_{reason}", url=landing)
+            continue
+        download(rec, pdf_url, target, f"downloaded_via_{reason}")
 
     log_path = out_dir / "fetch_log.csv"
     with open(log_path, "w", newline="", encoding="utf-8") as f:

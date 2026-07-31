@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from harvester.fetch_pdfs import fetch_pdfs, select_records
+from harvester.fetch_pdfs import fetch_pdfs, resolve_landing_pdf, select_records
 
 
 def _df():
@@ -33,6 +33,37 @@ def test_select_records_filters():
     assert "a3" not in set(select_records(df, ["master", "doctoral"], "market")["id"])
 
 
+def test_resolve_landing_prefers_citation_meta():
+    html = """<html><head>
+      <meta name="citation_pdf_url" content="/bitstream/1/thesis.pdf"/>
+      </head><body>
+      <a href="/bitstream/1/thesis.pdf">t</a>
+      <a href="/bitstream/1/posudek-oponent.pdf">review</a>
+      </body></html>"""
+    url, reason = resolve_landing_pdf(html, "https://dspace.example/handle/1")
+    assert url == "https://dspace.example/bitstream/1/thesis.pdf"
+    assert reason == "citation_pdf_url"
+
+
+def test_resolve_landing_never_guesses_between_many():
+    html = """<html><body>
+      <a href="/bitstream/1/thesis.pdf">t</a>
+      <a href="/bitstream/1/posudek.pdf">review</a>
+      </body></html>"""
+    url, reason = resolve_landing_pdf(html, "https://dspace.example/x")
+    assert url is None and reason.startswith("ambiguous")
+
+
+def test_resolve_landing_single_link_and_none():
+    single = '<html><body><a href="/bitstream/9/only.pdf">x</a></body></html>'
+    url, reason = resolve_landing_pdf(single, "https://r.example/h")
+    assert url == "https://r.example/bitstream/9/only.pdf"
+    assert reason == "single_bitstream_link"
+    none_html = "<html><body><p>no files</p></body></html>"
+    url, reason = resolve_landing_pdf(none_html, "https://r.example/h")
+    assert url is None and reason == "no_pdf_link_found"
+
+
 def test_dry_run_classifies_without_network(tmp_path: Path):
     out = tmp_path / "out"
     out.mkdir()
@@ -40,6 +71,6 @@ def test_dry_run_classifies_without_network(tmp_path: Path):
     fetch_pdfs(out, tmp_path / "pdfs", levels=["master", "doctoral"],
                selector="either", dry_run=True)
     log = (out / "fetch_log.csv").read_text()
-    assert "would_fetch" in log      # a1: has a direct PDF url
-    assert "landing_only" in log     # a2: landing page only, not scraped
+    assert "would_fetch" in log            # a1: has a direct PDF url
+    assert "would_resolve_landing" in log  # a2: landing page, resolver would run
     assert not (tmp_path / "pdfs").glob("**/*.pdf") or True
