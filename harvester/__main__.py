@@ -266,9 +266,28 @@ def main() -> int:
         "reflag", help="re-apply thesis_domain_flags.yaml to an existing dataset")
     reflagp.add_argument("--out", type=Path, default=PROJECT_ROOT / "output" / "phase1")
 
+    fetchp = sub.add_parser("fetch-pdfs", help="download full texts for the flagged subset")
+    fetchp.add_argument("--out", type=Path, default=PROJECT_ROOT / "output" / "phase1",
+                        help="output directory holding theses.parquet")
+    fetchp.add_argument("--dest", type=Path, default=PROJECT_ROOT / "data" / "pdfs",
+                        help="where PDFs are saved (gitignored data/ by default)")
+    fetchp.add_argument("--levels", default="master,doctoral",
+                        help="comma-separated levels to include")
+    fetchp.add_argument("--selector", choices=["market", "domain", "either"],
+                        default="market",
+                        help="market = the four market-domain flags (default); "
+                             "domain = broader power-engineering terms; either = union")
+    fetchp.add_argument("--dry-run", action="store_true",
+                        help="classify and write fetch_log.csv without downloading")
+
     args = p.parse_args()
     if args.cmd == "reflag":
         return reflag(args.out)
+    if args.cmd == "fetch-pdfs":
+        from .fetch_pdfs import fetch_pdfs
+        return fetch_pdfs(args.out, args.dest,
+                          levels=[s.strip() for s in args.levels.split(",") if s.strip()],
+                          selector=args.selector, dry_run=args.dry_run)
     if args.cmd == "probe":
         return probe(args.base_url, args.data)
     if args.cmd == "yok-debug":
