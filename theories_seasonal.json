@@ -1,0 +1,90 @@
+{
+  "schema_version": "2.0",
+  "note": "New theory types beyond day-of-week conditional patterns. Requires pattern_engine extension (see seasonal_momentum_handoff.md). Universe: Baltic Main List from master.parquet, 2005-2026, long-only, EUR.",
+  "theories": [
+    {
+      "id": "january_smallcap_effect",
+      "type": "monthly_seasonality",
+      "category": "Situational Analysis / Calendar Effects",
+      "hypothesis": "January returns on Baltic Main List stocks exceed the average of other calendar months. Effect expected to be pronounced because the entire Baltic market is small-cap and retail-driven (the documented driver of the January effect). Literature notes the effect has partially shifted to start mid-December.",
+      "variants": [
+        {
+          "name": "classic_january",
+          "window": {"start": "01-01", "end": "01-31"},
+          "baseline": "all other calendar months"
+        },
+        {
+          "name": "shifted_december_start",
+          "window": {"start": "12-15", "end": "01-31"},
+          "baseline": "all other days of year, same-length rolling windows"
+        }
+      ],
+      "portfolio": "equal-weight across all Main List tickers with valid data in the window",
+      "metrics": [
+        "mean window return vs baseline mean (same-length)",
+        "hit_rate: fraction of years window return > median monthly return of that year",
+        "hit_rate vs complement baseline via Fisher's exact (log-gamma implementation)"
+      ],
+      "stability_check": "five multi-year sub-periods 2005-2026, same windows as Patterns 1-2",
+      "execution_note": "If confirmed: bias planned purchases toward early-to-mid December; do NOT trade as in-and-out (spread paid twice)."
+    },
+    {
+      "id": "halloween_effect",
+      "type": "period_seasonality",
+      "category": "Situational Analysis / Calendar Effects",
+      "hypothesis": "November-April returns exceed May-October returns. Documented across 37 countries with the effect strongest in European markets; Baltic markets untested.",
+      "windows": {
+        "winter": {"start": "11-01", "end": "04-30"},
+        "summer": {"start": "05-01", "end": "10-31"}
+      },
+      "instruments": [
+        "OMX Tallinn index (from master.parquet if present, else index proxy)",
+        "OMX Riga index",
+        "OMX Vilnius index",
+        "equal-weight Main List portfolio"
+      ],
+      "metrics": [
+        "per-year winter minus summer return difference",
+        "hit_rate: fraction of years winter > summer",
+        "mean difference with bootstrap confidence interval (n_years ~ 21, LOW POWER - report CI, do not over-claim)"
+      ],
+      "stability_check": "directional consistency across sub-periods; formal five-window split underpowered at ~4 obs each, report descriptively only",
+      "execution_note": "If confirmed: use as buy-timing bias (concentrate planned purchases Sep-Oct, avoid initiating in late April); NOT a sell-and-rebuy strategy on Baltic spreads."
+    },
+    {
+      "id": "momentum_12_1_long_only",
+      "type": "cross_sectional_momentum",
+      "category": "Systematic / Momentum",
+      "hypothesis": "Stocks ranked in the top tercile by trailing 12-month return excluding the most recent month outperform the equal-weight Main List universe. Serial correlation (momentum) is among the most robust documented anomalies; illiquid small-cap markets often exhibit stronger momentum.",
+      "signal": {
+        "lookback_months": 12,
+        "skip_months": 1,
+        "ranking": "total return over months t-12 to t-1",
+        "eligibility": "Main List only; minimum 12 months of price history; exclude tickers with >20% zero-volume days in lookback"
+      },
+      "portfolio": {
+        "selection": "top tercile (universe ~30-40 names, deciles too thin)",
+        "weighting": "equal-weight",
+        "rebalance_variants": ["monthly", "quarterly"]
+      },
+      "costs": {
+        "commission": 0.0,
+        "spread_model": "per-trade cost = estimated half-spread per ticker (median daily (ask-bid)/mid if available, else proxy from high-low estimator); apply on every entry and exit",
+        "report": "gross AND net returns; turnover per variant"
+      },
+      "benchmark": "equal-weight all eligible Main List names, same rebalance dates",
+      "metrics": [
+        "annualized net excess return vs benchmark",
+        "hit_rate: fraction of rebalance periods top tercile > benchmark, Fisher's exact vs 50%",
+        "max drawdown, worst 12-month window"
+      ],
+      "secondary_variant": {
+        "id": "absolute_momentum_filter",
+        "rule": "hold a name only if its own trailing 12-1 month return > 0; otherwise cash (long-only compatible trend filter)",
+        "purpose": "tests whether a time-series filter reduces drawdowns enough to justify added turnover cost"
+      },
+      "stability_check": "five multi-year sub-periods 2005-2026",
+      "execution_note": "Quarterly rebalance is the realistic LHV retail variant; monthly likely eroded by spread. Judge tradability on NET numbers only."
+    }
+  ]
+}
