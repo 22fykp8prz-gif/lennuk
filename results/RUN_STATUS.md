@@ -88,8 +88,12 @@ tavavõrgust päris brauseri-renderdusega. PL vajab teist võrgukeskkonda.
    gas_plant_scraper login <url>` (Smart-ID) ja seejärel
    `GPS_STORAGE_STATE=data/storage_state.json python -m gas_plant_scraper
    run --countries EE,...` — vt README.
-4. **lv_vpvb / fi_yva / se_lansstyrelsen**: uuendada `search_url` (portaalide
-   otsingu-routed on muutunud, praegused annavad 404).
+4. ~~lv_vpvb / fi_yva routed~~ — **parandatud** (EVA/eva.gov.lv ja
+   ymparisto.fi uued teed; kontrolljooks: routed avanevad, aga dokumente
+   veel ei tulnud — FI tulemused on JS-laetud otsingu taga, LV otsing ei
+   leia gaasijaama-IVN projekte, register võib olla mujal).
+   **se_lansstyrelsen**: otsing on JS-põhine, route vajab käsitsi
+   tuvastamist brauseris.
 5. **ee_ametlikud_teadaanded**: uurida ametlikku liidest (nt teadaannete
    RSS/otsepäringud), kuna robots.txt keelab otsingulehtede kraapimise.
 6. **pl_gdos_baza**: siit keskkonnast kättesaamatu (proksi tunnel 502);
