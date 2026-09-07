@@ -1,0 +1,192 @@
+# Avalikud allikad gaasiturbiin- ja gaasimootorjaamade planeeringute,
+# keskkonnamõju hindamiste (KMH/EIA) ja lubade dokumentide kogumiseks.
+#
+# Iga allika väljad:
+#   id              - unikaalne tunnus
+#   country         - ISO riigikood
+#   name            - inimloetav nimi
+#   languages       - millistes keeltes otsingusõnu kasutada (vt keywords.py)
+#   seeds           - lähte-URLid, millest crawl algab
+#   search_url      - valikuline otsingu-URL mall; {query} asendatakse otsingusõnaga
+#   allowed_domains - domeenid, mille piires linke järgitakse
+#   max_depth       - kui sügavale seed-lehtedelt linke järgitakse
+#   max_pages       - lehtede ülempiir allika kohta (viisakuspiirang)
+#   notes           - märkused kasutajale (nt kas portaal vajab käsitsi otsingut)
+
+sources:
+  # ─── Eesti ──────────────────────────────────────────────────────────────
+  - id: ee_kotkas
+    country: EE
+    name: "KOTKAS – keskkonnaotsuste infosüsteem (KMH, keskkonnaload)"
+    languages: [et]
+    seeds:
+      - "https://kotkas.envir.ee/dokumendid/dokumentide_loetelu"
+    search_url: "https://kotkas.envir.ee/dokumendid/dokumentide_loetelu?otsing={query}"
+    allowed_domains: [kotkas.envir.ee]
+    max_depth: 2
+    max_pages: 300
+    notes: >
+      KMH aruanded, keskkonnakomplekslubade taotlused (sh asendiplaanid,
+      ohutusdokumendid). Täpsem otsing võimalik portaalis käsitsi.
+
+  - id: ee_plank
+    country: EE
+    name: "PLANK – planeeringute andmekogu"
+    languages: [et]
+    seeds:
+      - "https://planeeringud.ee/plank-web/#/planning/search"
+    search_url: "https://planeeringud.ee/plank-web/#/planning/search?text={query}"
+    allowed_domains: [planeeringud.ee, plank.ee]
+    max_depth: 2
+    max_pages: 200
+    notes: >
+      Riiklik planeeringute andmekogu: detail- ja eriplaneeringute joonised,
+      seletuskirjad. SPA-rakendus – osa sisust laetakse JavaScriptiga,
+      vajadusel kasuta portaali käsitsi ja lisa leitud dokumendi-URLid
+      seeds-nimekirja.
+
+  - id: ee_ametlikud_teadaanded
+    country: EE
+    name: "Ametlikud Teadaanded (planeeringu- ja KMH-teated)"
+    languages: [et]
+    seeds:
+      - "https://www.ametlikudteadaanded.ee/avalik"
+    search_url: "https://www.ametlikudteadaanded.ee/avalik/otsing?otsisona={query}"
+    allowed_domains: [ametlikudteadaanded.ee, www.ametlikudteadaanded.ee]
+    max_depth: 1
+    max_pages: 150
+
+  # ─── Läti ───────────────────────────────────────────────────────────────
+  - id: lv_vpvb
+    country: LV
+    name: "Vides pārraudzības valsts birojs – IVN (KMH) projektid"
+    languages: [lv, en]
+    seeds:
+      - "https://www.vpvb.gov.lv/lv/ietekmes-uz-vidi-novertejuma-projekti"
+    search_url: "https://www.vpvb.gov.lv/lv/search?q={query}"
+    allowed_domains: [vpvb.gov.lv, www.vpvb.gov.lv]
+    max_depth: 2
+    max_pages: 300
+
+  - id: lv_geolatvija
+    country: LV
+    name: "ĢeoLatvija / TAPIS – teritoriālplānojumi"
+    languages: [lv]
+    seeds:
+      - "https://geolatvija.lv/geo/tapis"
+    search_url: "https://geolatvija.lv/geo/tapis#search={query}"
+    allowed_domains: [geolatvija.lv]
+    max_depth: 1
+    max_pages: 100
+    notes: "SPA-portaal; dokumendid tihti käsitsi avatavad."
+
+  # ─── Leedu ──────────────────────────────────────────────────────────────
+  - id: lt_aaa_pav
+    country: LT
+    name: "Aplinkos apsaugos agentūra – PAV (KMH) teated ja aruanded"
+    languages: [lt, en]
+    seeds:
+      - "https://aaa.lrv.lt/lt/veiklos-sritys/poveikio-aplinkai-vertinimas-pav/"
+    search_url: "https://aaa.lrv.lt/lt/paieska?q={query}"
+    allowed_domains: [aaa.lrv.lt, gamta.lt]
+    max_depth: 2
+    max_pages: 300
+
+  - id: lt_tpdris
+    country: LT
+    name: "TPDRIS – teritorijų planavimo dokumentai"
+    languages: [lt]
+    seeds:
+      - "https://www.tpdris.lt/lt_LT/web/guest/sarasas"
+    allowed_domains: [tpdris.lt, www.tpdris.lt]
+    max_depth: 1
+    max_pages: 100
+    notes: "Vajab tihti sessiooni; parim käsitsi otsinguks."
+
+  # ─── Soome ──────────────────────────────────────────────────────────────
+  - id: fi_yva
+    country: FI
+    name: "Ymparisto.fi – YVA-hankkeet (KMH projektid)"
+    languages: [fi, en]
+    seeds:
+      - "https://www.ymparisto.fi/fi/osallistu-ja-vaikuta/ymparistovaikutusten-arviointi/yva-hankkeet"
+    search_url: "https://www.ymparisto.fi/fi/haku?query={query}"
+    allowed_domains: [ymparisto.fi, www.ymparisto.fi]
+    max_depth: 2
+    max_pages: 300
+    notes: >
+      YVA-projektide lehed sisaldavad arviointiselostus-aruandeid, kus on
+      asendiplaanid ja tehnilised kirjeldused.
+
+  - id: fi_ylupa
+    country: FI
+    name: "AVI Lupa-Tietopalvelu – keskkonnaload"
+    languages: [fi]
+    seeds:
+      - "https://ylupa.avi.fi/fi-FI"
+    allowed_domains: [ylupa.avi.fi]
+    max_depth: 1
+    max_pages: 100
+    notes: "SPA-portaal; lubade PDF-id (sh joonised) käsitsi otsitavad."
+
+  # ─── Rootsi ─────────────────────────────────────────────────────────────
+  - id: se_lansstyrelsen
+    country: SE
+    name: "Länsstyrelserna – miljöprövning (keskkonnaload)"
+    languages: [sv, en]
+    seeds:
+      - "https://www.lansstyrelsen.se/stockholm/miljo-och-vatten/miljofarlig-verksamhet.html"
+    search_url: "https://www.lansstyrelsen.se/sok.html?query={query}"
+    allowed_domains: [lansstyrelsen.se, www.lansstyrelsen.se]
+    max_depth: 2
+    max_pages: 200
+    notes: >
+      Rootsis pole ühtset avalikku dokumendiportaali; load menetleb
+      miljöprövningsdelegation / mark- och miljödomstol. Dokumendid saab
+      küsida diariumist (offentlighetsprincipen).
+
+  # ─── Poola ──────────────────────────────────────────────────────────────
+  - id: pl_gdos_baza
+    country: PL
+    name: "Baza danych OOŚ (GDOŚ) – KMH andmebaas"
+    languages: [pl, en]
+    seeds:
+      - "https://baza.gdos.gov.pl/web/guest/szukaj"
+    search_url: "https://baza.gdos.gov.pl/web/guest/szukaj?q={query}"
+    allowed_domains: [baza.gdos.gov.pl, gdos.gov.pl]
+    max_depth: 2
+    max_pages: 300
+
+  - id: pl_ekoportal
+    country: PL
+    name: "Ekoportal – wykaz danych o środowisku"
+    languages: [pl]
+    seeds:
+      - "https://wykaz.ekoportal.pl/CardList.seam"
+    allowed_domains: [wykaz.ekoportal.pl, ekoportal.pl]
+    max_depth: 1
+    max_pages: 100
+
+  # ─── Tšehhi ─────────────────────────────────────────────────────────────
+  - id: cz_eia
+    country: CZ
+    name: "CENIA – EIA informační systém"
+    languages: [cs, en]
+    seeds:
+      - "https://portal.cenia.cz/eiasea/view/eia100_cr"
+    allowed_domains: [portal.cenia.cz]
+    max_depth: 2
+    max_pages: 300
+    notes: >
+      Tšehhi EIA register: projektide lehtedel dokumentace-failid
+      (sh situace/výkres joonised, ohutusanalüüsid).
+
+  - id: cz_ippc
+    country: CZ
+    name: "IPPC – integrované povolení (MŽP)"
+    languages: [cs]
+    seeds:
+      - "https://ippc.mzp.cz/ippc/ippc.nsf/vydana-povoleni"
+    allowed_domains: [ippc.mzp.cz, mzp.cz]
+    max_depth: 1
+    max_pages: 100
