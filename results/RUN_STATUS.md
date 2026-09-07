@@ -1,9 +1,9 @@
-# RUN_STATUS — reaalajas kraapimise tulemused (EE, CZ)
+# RUN_STATUS — reaalajas kraapimise tulemused (EE, CZ + LV, LT, FI, SE, PL)
 
 **Kuupäev:** 2026-09-07 (UTC)
 **Haru:** `claude/gas-power-plant-scraper-58nmad`
-**Käsk:** `python -m gas_plant_scraper -v run --countries EE,CZ --max-docs 20`
-(+ sihitud kordusjooks CZ allikatele parandatud seemne-URL-idega, vt allpool)
+**Käsud:** `python -m gas_plant_scraper -v run --countries EE,CZ --max-docs 20`
+(+ sihitud kordusjooks CZ allikatele; + `--countries LV,LT,FI,PL,SE --max-docs 20`)
 
 ## Kokkuvõte
 
@@ -49,20 +49,51 @@ Tüübi järgi:  {'unclassified': 9, 'description': 8, 'infrastructure': 1, 'per
   skreeper austab seda teadlikult. Vajaks kas robots-erandit (mitte soovitatav)
   või ametlikku API-t/RSS-i.
 
+## Teiste riikide jooks (LV, LT, FI, SE, PL) — 0 dokumenti
+
+| Allikas | Lehti | Dokumente | Vigu | Põhjus |
+|---|---|---|---|---|
+| lv_vpvb | 34 | 0 | 4 | Seemnelehed avanevad, aga gaasijaama-projekte linkide kaudu ei leitud; otsingu-URL `/lv/search?q=` annab 404 (route muutunud) |
+| lv_geolatvija | 6 | 0 | 0 | SPA; Chromiumi render selles keskkonnas ei tööta (proksi TLS), HTTP-varuvariant toob tühja kesta |
+| lt_aaa_pav | 0 | 0 | 13 | HTTP 403 kõigile otsingupäringutele — robotitõrje |
+| lt_tpdris | 0 | 0 | 1 | Ühendus lähtestatakse (nii render kui HTTP) — tõenäoliselt blokeerib andmekeskuse liiklust |
+| fi_yva | 0 | 0 | 14 | HTTP 404 — ymparisto.fi otsingu-route on muutunud, `?query=` teed enam pole |
+| fi_ylupa | 0 | 0 | 1 | ylupa.avi.fi TLS-sert on aegunud (`certificate has expired`); render kukub samuti |
+| se_lansstyrelsen | 1 | 0 | 12 | HTTP 404 — lansstyrelsen.se otsingu-route (`/sok.html?query=`) on muutunud |
+| pl_gdos_baza | 0 | 0 | 14 | Väljuv proksi ei saa hostiga ühendust (tunnel 502) — baza.gdos.gov.pl on siit kättesaamatu |
+| pl_ekoportal | 0 | 0 | 1 | Portaal ise vastab HTTP 500 (`CardList.seam`) |
+
+Kokkuvõttes: LV/LT/FI/SE vajavad peamiselt **otsingu-URL-ide uuendamist**
+(routed on portaalides muutunud) ja osa (LT, ĢeoLatvija, ylupa) käivitamist
+tavavõrgust päris brauseri-renderdusega. PL vajab teist võrgukeskkonda.
+
+## Koodimuudatused selles harus (sama jooksu käigus)
+
+- `login`-käsk: ava nähtav brauser, logi sisse Smart-ID / Mobiil-ID /
+  ID-kaardiga, sessioon salvestatakse (`GPS_STORAGE_STATE`) ja seda
+  kasutavad nii renderdus kui HTTP-päringud/allalaadimised. Töötab ainult
+  kohalikus masinas (brauseriaken + Eesti IP).
+- `search_post` seadistus POST-vormiga otsingutele; cz_eia kasutab seda
+  nüüd ise (kontrollitud: leiab gaasiprojektid ilma käsitsi seemneteta).
+- cz_ippc parandatud route (`index.xsp`) + render; ee_kotkas render + WAF-i
+  märkus; `GPS_PROXY` ja `GPS_CHROMIUM_ARGS` keskkonnamuutujad.
+
 ## Soovitused edasiseks
 
-1. **cz_eia**: lisada `config/sources.yaml`-i POST-otsingu tugi või hoida
-   seemnetena gaasiprojektide detail-URL-e (need on stabiilsed:
-   `https://portal.cenia.cz/eiasea/detail/EIA_xxx?lang=cs`). Otsing vajab
-   välju `typHledani=rychle&quickSearch=<sõna>` POST-ina samale vaatele.
-2. **cz_ippc**: uuendada seed `https://ippc.mzp.cz/ippc/ippc.nsf/index.xsp`
-   peale ja lisada renderdus (XPages vajab JS-i), või kasutada rakenduse
-   sisemisi loendivaateid, kui need GET-iga avanevad.
-3. **ee_kotkas / ee_plank**: jooksutada elukoha-/kontorivõrgust (mitte
-   andmekeskusest) või kasutajapoolse brauseri kaudu; selles keskkonnas
-   lisaks vaja proksi, mis ei lõhu Chromiumi TLS 1.3 kätlust.
-4. **ee_ametlikud_teadaanded**: uurida ametlikku liidest (nt teadaannete
+1. ~~cz_eia POST-otsing~~ — **tehtud** (`search_post` seadistus töötab).
+2. ~~cz_ippc route~~ — **tehtud** (`index.xsp` + render; JS-renderdus vajab
+   tavavõrku).
+3. **ee_kotkas / ee_plank / lt_* / lv_geolatvija / fi_ylupa**: jooksutada
+   kohalikust masinast (koduvõrk + päris brauser): `python -m
+   gas_plant_scraper login <url>` (Smart-ID) ja seejärel
+   `GPS_STORAGE_STATE=data/storage_state.json python -m gas_plant_scraper
+   run --countries EE,...` — vt README.
+4. **lv_vpvb / fi_yva / se_lansstyrelsen**: uuendada `search_url` (portaalide
+   otsingu-routed on muutunud, praegused annavad 404).
+5. **ee_ametlikud_teadaanded**: uurida ametlikku liidest (nt teadaannete
    RSS/otsepäringud), kuna robots.txt keelab otsingulehtede kraapimise.
+6. **pl_gdos_baza**: siit keskkonnast kättesaamatu (proksi tunnel 502);
+   proovida teisest võrgust.
 
 ## Failid
 
