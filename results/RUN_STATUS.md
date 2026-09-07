@@ -1,5 +1,17 @@
 # RUN_STATUS — reaalajas kraapimise tulemused (EE, CZ + LV, LT, FI, SE, PL)
 
+> **Uusim seis: `results/catalog_all.csv` / `.jsonl` — 285 kirjet**
+> (CZ 51, LV 21, FI 10, SE 8, PL 195 metaandmekaarti), liidetud ja
+> URL-i järgi dedubleeritud kõigi jooksudest. Süvakorje 2026-09-07:
+> `run --sources cz_eia,lv_vpvb,fi_yva,se_lansstyrelsen --max-docs 100`
+> andis 66 uut dokumenti (CZ 33, LV 21, FI 4, SE 8; LV eelmise jooksu
+> 20-dokumendi lagi sai ületatud, CENIA otsing käib nüüd search_post-i
+> kaudu konfist). Renderdus töötab selles keskkonnas FI/LV jaoks
+> seadetega GPS_PROXY=$HTTPS_PROXY GPS_CHROMIUM_ARGS="--ssl-version-max=tls1.2"
+> GPS_IGNORE_HTTPS_ERRORS=1. KOTKAS on kinnitatult Cloudflare'i
+> (govcloud.ee) taga — ka päris brauser saab siit "you have been blocked";
+> Eesti vajab kohalikku jooksu (login + Smart-ID, vt README).
+
 **Kuupäev:** 2026-09-07 (UTC)
 **Haru:** `claude/gas-power-plant-scraper-58nmad`
 **Käsud:** `python -m gas_plant_scraper -v run --countries EE,CZ --max-docs 20`
