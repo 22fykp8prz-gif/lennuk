@@ -195,8 +195,12 @@ sources:
     max_pages: 300
     notes: >
       Tšehhi EIA register: projektide lehtedel dokumentace-failid
-      (sh situace/výkres joonised, ohutusanalüüsid). Otsing töötab ainult
-      POST-vormina (search_post); GET-parameetreid portaal eirab.
+      (sh situace/výkres joonised, ohutusanalüüsid). Avaleht näitab vaid
+      viimaseid projekte; otsing töötab ainult POST-vormina ja käib
+      search_post-seadistuse kaudu (typHledani=rychle, quickSearch=<sõna>).
+      Vajadusel saab gaasiprojektide detail-URLe
+      (https://portal.cenia.cz/eiasea/detail/EIA_xxx?lang=cs) lisada ka
+      otse seeds-nimekirja.
 
   - id: cz_ippc
     country: CZ
