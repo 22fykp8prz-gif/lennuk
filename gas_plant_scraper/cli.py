@@ -17,9 +17,10 @@ from pathlib import Path
 
 import yaml
 
+from . import browser
 from .catalog import Catalog
 from .crawler import SourceConfig, SourceCrawler
-from .fetch import Fetcher
+from .fetch import Fetcher, USER_AGENT
 
 DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "config" / "sources.yaml"
 DEFAULT_DATA_DIR = Path("data")
@@ -58,25 +59,47 @@ def cmd_run(args: argparse.Namespace) -> int:
         respect_robots=not args.ignore_robots,
     )
 
+    renderer = None
+    needs_render = any(s.render for s in sources) and not args.no_render
+    if needs_render:
+        if browser.available():
+            renderer = browser.Renderer(
+                delay_seconds=args.delay, user_agent=USER_AGENT
+            )
+        else:
+            print(
+                "Hoiatus: playwright pole paigaldatud – SPA-portaalid "
+                "(render: true) laetakse tavalise HTTP-ga ja võivad jääda "
+                "tühjaks. Paigalda: pip install playwright && "
+                "playwright install chromium",
+                file=sys.stderr,
+            )
+
     total_docs = 0
-    for src in sources:
-        print(f"→ {src.country} / {src.id}: {src.name}")
-        crawler = SourceCrawler(
-            src,
-            fetcher,
-            catalog,
-            data_dir,
-            max_docs=args.max_docs,
-            min_relevance=args.min_relevance,
-            download=not args.no_download,
-        )
-        stats = crawler.run()
-        total_docs += stats.documents_found
-        print(
-            f"   lehti: {stats.pages_fetched}, dokumente: {stats.documents_found} "
-            f"(alla laetud {stats.documents_downloaded}), vigu: {stats.errors}, "
-            f"tüübid: {stats.by_type or '-'}"
-        )
+    try:
+        for src in sources:
+            mode = " [render]" if src.render and renderer else ""
+            print(f"→ {src.country} / {src.id}: {src.name}{mode}")
+            crawler = SourceCrawler(
+                src,
+                fetcher,
+                catalog,
+                data_dir,
+                max_docs=args.max_docs,
+                min_relevance=args.min_relevance,
+                download=not args.no_download,
+                renderer=renderer,
+            )
+            stats = crawler.run()
+            total_docs += stats.documents_found
+            print(
+                f"   lehti: {stats.pages_fetched}, dokumente: {stats.documents_found} "
+                f"(alla laetud {stats.documents_downloaded}), vigu: {stats.errors}, "
+                f"tüübid: {stats.by_type or '-'}"
+            )
+    finally:
+        if renderer is not None:
+            renderer.close()
 
     catalog.export_csv(data_dir / "catalog.csv")
     catalog.export_jsonl(data_dir / "catalog.jsonl")
@@ -147,6 +170,8 @@ def main(argv: list[str] | None = None) -> int:
                        help="mitu otsingusõna peab lingi kontekstis leiduma")
     p_run.add_argument("--delay", type=float, default=2.0,
                        help="viivitus sekundites sama hosti päringute vahel")
+    p_run.add_argument("--no-render", action="store_true",
+                       help="ära kasuta Playwright-renderdust ka SPA-allikatel")
     p_run.add_argument("--no-download", action="store_true",
                        help="ainult katalogi, faile alla ei laeta")
     p_run.add_argument("--ignore-robots", action="store_true",

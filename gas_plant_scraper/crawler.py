@@ -55,6 +55,7 @@ class SourceConfig:
     search_url: str | None = None
     max_depth: int = 2
     max_pages: int = 200
+    render: bool = False  # render pages in headless Chromium (SPA portals)
     notes: str = ""
 
     @classmethod
@@ -111,9 +112,11 @@ class SourceCrawler:
         max_docs: int | None = None,
         min_relevance: int = 1,
         download: bool = True,
+        renderer=None,
     ):
         self.source = source
         self.fetcher = fetcher
+        self.renderer = renderer if source.render else None
         self.catalog = catalog
         self.out_dir = out_dir / source.country / source.id
         self.max_docs = max_docs
@@ -132,6 +135,11 @@ class SourceCrawler:
                     )
         return urls
 
+    def _normalize(self, url: str) -> str:
+        # SPA portals route via URL fragments (#/planning/search), so keep
+        # fragments for rendered sources; strip them everywhere else.
+        return url if self.renderer is not None else urldefrag(url)[0]
+
     def run(self) -> CrawlStats:
         queue: deque[tuple[str, int]] = deque(
             (url, 0) for url in self.start_urls()
@@ -141,7 +149,7 @@ class SourceCrawler:
             if self.max_docs and self.stats.documents_found >= self.max_docs:
                 break
             url, depth = queue.popleft()
-            url, _ = urldefrag(url)
+            url = self._normalize(url)
             if url in seen or not _domain_allowed(url, self.source.allowed_domains):
                 continue
             seen.add(url)
@@ -149,29 +157,48 @@ class SourceCrawler:
         return self.stats
 
     # ── page handling ────────────────────────────────────────────────────
+    def _page_html(self, url: str) -> str | None:
+        """Fetch page HTML: headless-browser render for SPA sources
+        (falling back to plain HTTP), plain HTTP otherwise."""
+        if self.renderer is not None:
+            if not self.fetcher.allowed(url):
+                log.info("robots.txt disallows %s", url)
+                return None
+            html = self.renderer.get_html(url)
+            if html is not None:
+                return html
+            log.info("render failed, falling back to HTTP for %s", url)
+        resp = self.fetcher.get(url)
+        if resp is None:
+            return None
+        try:
+            content_type = resp.headers.get("Content-Type", "")
+            if "html" not in content_type:
+                return ""
+            if "charset" not in content_type.lower():
+                # Requests defaults to ISO-8859-1 when the header is silent,
+                # which garbles accented text; sniff the real encoding.
+                resp.encoding = resp.apparent_encoding
+            return resp.text
+        finally:
+            resp.close()
+
     def _visit(
         self, url: str, depth: int, queue: deque, seen: set[str]
     ) -> None:
-        resp = self.fetcher.get(url)
-        if resp is None:
+        html = self._page_html(url)
+        if html is None:
             self.stats.errors += 1
             return
-        content_type = resp.headers.get("Content-Type", "")
-        if "html" not in content_type:
-            resp.close()
-            return
+        if not html:
+            return  # non-HTML resource
         self.stats.pages_fetched += 1
-        if "charset" not in content_type.lower():
-            # Requests defaults to ISO-8859-1 when the header is silent,
-            # which garbles accented text; sniff the real encoding instead.
-            resp.encoding = resp.apparent_encoding
-        soup = BeautifulSoup(resp.text, "html.parser")
+        soup = BeautifulSoup(html, "html.parser")
         page_text = soup.get_text(" ", strip=True)[:20000]
         page_relevant = relevance_score(page_text) >= self.min_relevance
 
         for anchor in soup.find_all("a", href=True):
-            link = urljoin(url, anchor["href"])
-            link, _ = urldefrag(link)
+            link = self._normalize(urljoin(url, anchor["href"]))
             if link in seen:
                 continue
             text = anchor.get_text(" ", strip=True)

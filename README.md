@@ -24,6 +24,14 @@ pip install -r requirements.txt
 `pypdf` on valikuline – kui see on paigaldatud, loeb scraper MW-arvud ja
 dokumenditüübid ka PDF-ide sisust, mitte ainult failinimedest ja lingitekstidest.
 
+`playwright` on samuti valikuline, aga **vajalik JavaScripti-portaalide**
+(PLANK, ylupa.avi.fi, ĢeoLatvija, TPDRIS) jaoks:
+
+```bash
+pip install playwright
+playwright install chromium
+```
+
 ## Kasutamine
 
 ```bash
@@ -69,6 +77,25 @@ Tulemused:
 Scraper on viisakas: vaikimisi 2 s viivitus hosti kohta, arvestab
 `robots.txt`-ga, piirab lehtede ja failide arvu allika kohta.
 
+### Playwright-renderdus (SPA-portaalid)
+
+Allikad, millel on `config/sources.yaml`-is `render: true` (PLANK,
+ylupa.avi.fi, ĢeoLatvija, TPDRIS), avatakse päritolutruult headless
+Chromiumis: leht renderdatakse, oodatakse võrguliikluse vaibumist ja alles
+seejärel korjatakse lingid – nii leitakse ka JavaScriptiga laetud
+dokumendinimekirjad. Eripärad:
+
+- hash-ruudid (nt `#/planning/search?text=gaasiturbiin`) säilitatakse,
+  sest SPA-des on need eraldi vaated;
+- pildid/fondid/meedia jäetakse laadimata (kiirem ja viisakam);
+- kui Playwright pole paigaldatud või renderdus ebaõnnestub, langetakse
+  automaatselt tagasi tavalisele HTTP-le;
+- `--no-render` lülitab renderduse käsitsi välja;
+- robots.txt kehtib ka renderdatud lehtedele.
+
+Kohandatud Chromiumi asukoha saab anda keskkonnamuutujaga
+`GPS_CHROMIUM_PATH`.
+
 ## Allikad riigiti
 
 | Riik | Allikas | Mis sealt tuleb |
@@ -90,11 +117,10 @@ Scraper on viisakas: vaikimisi 2 s viivitus hosti kohta, arvestab
 
 **Märkused:**
 
-- Mitu portaali (PLANK, ĢeoLatvija, TPDRIS, ylupa.avi.fi) on
-  JavaScripti-põhised SPA-rakendused – automaatne crawl leiab sealt vähem;
-  parim tulemus tuleb, kui otsid portaalis käsitsi projekti üles ja lisad
-  projekti/dokumendi URLi vastava allika `seeds`-nimekirja
-  (`config/sources.yaml`) ning käivitad scraperi uuesti.
+- SPA-portaalid (PLANK, ĢeoLatvija, TPDRIS, ylupa.avi.fi) renderdatakse
+  Playwrightiga (vt ülal). Kui mõni projekt jääb siiski leidmata (nt vajab
+  sessiooni või interaktiivset otsingut), otsi see portaalis käsitsi üles ja
+  lisa projekti URL vastava allika `seeds`-nimekirja (`config/sources.yaml`).
 - Rootsis pole ühtset avalikku dokumendiportaali – load menetlevad
   miljöprövningsdelegationid ja mark- och miljödomstolid; dokumendid saab
   küsida asutuse diariumist (offentlighetsprincipen alusel, tavaliselt

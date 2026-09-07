@@ -11,6 +11,7 @@
 #   allowed_domains - domeenid, mille piires linke järgitakse
 #   max_depth       - kui sügavale seed-lehtedelt linke järgitakse
 #   max_pages       - lehtede ülempiir allika kohta (viisakuspiirang)
+#   render          - true = renderda lehed Playwrighti/Chromiumiga (SPA-portaalid)
 #   notes           - märkused kasutajale (nt kas portaal vajab käsitsi otsingut)
 
 sources:
@@ -39,11 +40,11 @@ sources:
     allowed_domains: [planeeringud.ee, plank.ee]
     max_depth: 2
     max_pages: 200
+    render: true
     notes: >
       Riiklik planeeringute andmekogu: detail- ja eriplaneeringute joonised,
-      seletuskirjad. SPA-rakendus – osa sisust laetakse JavaScriptiga,
-      vajadusel kasuta portaali käsitsi ja lisa leitud dokumendi-URLid
-      seeds-nimekirja.
+      seletuskirjad. SPA-rakendus – renderdatakse Playwrightiga (render: true).
+      Vajadusel lisa portaalist käsitsi leitud projekti-URLid seeds-nimekirja.
 
   - id: ee_ametlikud_teadaanded
     country: EE
@@ -76,9 +77,10 @@ sources:
       - "https://geolatvija.lv/geo/tapis"
     search_url: "https://geolatvija.lv/geo/tapis#search={query}"
     allowed_domains: [geolatvija.lv]
-    max_depth: 1
+    max_depth: 2
     max_pages: 100
-    notes: "SPA-portaal; dokumendid tihti käsitsi avatavad."
+    render: true
+    notes: "SPA-portaal; renderdatakse Playwrightiga (render: true)."
 
   # ─── Leedu ──────────────────────────────────────────────────────────────
   - id: lt_aaa_pav
@@ -99,9 +101,12 @@ sources:
     seeds:
       - "https://www.tpdris.lt/lt_LT/web/guest/sarasas"
     allowed_domains: [tpdris.lt, www.tpdris.lt]
-    max_depth: 1
+    max_depth: 2
     max_pages: 100
-    notes: "Vajab tihti sessiooni; parim käsitsi otsinguks."
+    render: true
+    notes: >
+      Renderdatakse Playwrightiga (render: true); osa vaateid vajab siiski
+      sessiooni ja jääb käsitsi otsinguks.
 
   # ─── Soome ──────────────────────────────────────────────────────────────
   - id: fi_yva
@@ -125,9 +130,12 @@ sources:
     seeds:
       - "https://ylupa.avi.fi/fi-FI"
     allowed_domains: [ylupa.avi.fi]
-    max_depth: 1
-    max_pages: 100
-    notes: "SPA-portaal; lubade PDF-id (sh joonised) käsitsi otsitavad."
+    max_depth: 2
+    max_pages: 150
+    render: true
+    notes: >
+      SPA-portaal; renderdatakse Playwrightiga (render: true), lubade PDF-id
+      (sh joonised) tulevad projektilehtedelt.
 
   # ─── Rootsi ─────────────────────────────────────────────────────────────
   - id: se_lansstyrelsen
