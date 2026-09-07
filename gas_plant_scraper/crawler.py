@@ -53,6 +53,8 @@ class SourceConfig:
     seeds: list[str]
     allowed_domains: list[str]
     search_url: str | None = None
+    # POST-only search forms: {url, data: {fixed fields}, query_field}
+    search_post: dict | None = None
     max_depth: int = 2
     max_pages: int = 200
     render: bool = False  # render pages in headless Chromium (SPA portals)
@@ -145,6 +147,7 @@ class SourceCrawler:
             (url, 0) for url in self.start_urls()
         )
         seen: set[str] = set()
+        self._post_searches(queue, seen)
         while queue and self.stats.pages_fetched < self.source.max_pages:
             if self.max_docs and self.stats.documents_found >= self.max_docs:
                 break
@@ -183,6 +186,30 @@ class SourceCrawler:
         finally:
             resp.close()
 
+    def _post_searches(self, queue: deque, seen: set[str]) -> None:
+        """Run POST-form searches (``search_post``) and feed the result
+        pages through the normal link extraction."""
+        sp = self.source.search_post
+        if not sp:
+            return
+        url = sp["url"]
+        base_data = dict(sp.get("data", {}))
+        query_field = sp.get("query_field", "q")
+        for lang in self.source.languages:
+            for term in SEARCH_TERMS.get(lang, []):
+                resp = self.fetcher.post(url, {**base_data, query_field: term})
+                if resp is None:
+                    self.stats.errors += 1
+                    continue
+                try:
+                    if "charset" not in resp.headers.get("Content-Type", "").lower():
+                        resp.encoding = resp.apparent_encoding
+                    html = resp.text
+                finally:
+                    resp.close()
+                self.stats.pages_fetched += 1
+                self._process_html(url, html, 0, queue, seen)
+
     def _visit(
         self, url: str, depth: int, queue: deque, seen: set[str]
     ) -> None:
@@ -193,6 +220,11 @@ class SourceCrawler:
         if not html:
             return  # non-HTML resource
         self.stats.pages_fetched += 1
+        self._process_html(url, html, depth, queue, seen)
+
+    def _process_html(
+        self, url: str, html: str, depth: int, queue: deque, seen: set[str]
+    ) -> None:
         soup = BeautifulSoup(html, "html.parser")
         page_text = soup.get_text(" ", strip=True)[:20000]
         page_relevant = relevance_score(page_text) >= self.min_relevance

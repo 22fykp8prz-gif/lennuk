@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 import urllib.robotparser
@@ -89,6 +90,50 @@ class Fetcher:
                     time.sleep(backoff)
                     backoff *= 2
         return None
+
+    def post(
+        self, url: str, data: dict[str, str]
+    ) -> requests.Response | None:
+        """Form POST with throttling and retries; None on failure.
+
+        Used for portals whose search only works as a form submission
+        (``search_post`` in sources.yaml)."""
+        if not self.allowed(url):
+            log.info("robots.txt disallows %s", url)
+            return None
+        backoff = 2.0
+        for attempt in range(1, self.max_retries + 1):
+            self._throttle(url)
+            try:
+                resp = self.session.post(url, data=data, timeout=self.timeout)
+                if resp.status_code in (429, 502, 503, 504):
+                    raise requests.RequestException(f"HTTP {resp.status_code}")
+                if resp.status_code >= 400:
+                    log.info("HTTP %s for POST %s", resp.status_code, url)
+                    return None
+                return resp
+            except requests.RequestException as exc:
+                log.warning("attempt %d failed for POST %s: %s", attempt, url, exc)
+                if attempt < self.max_retries:
+                    time.sleep(backoff)
+                    backoff *= 2
+        return None
+
+    def load_storage_state_cookies(self, path: str) -> int:
+        """Import cookies from a Playwright storage-state file (``login``
+        command), so plain-HTTP fetches and downloads reuse the
+        authenticated browser session. Returns the cookie count."""
+        with open(path, encoding="utf-8") as fh:
+            state = json.load(fh)
+        cookies = state.get("cookies", [])
+        for c in cookies:
+            self.session.cookies.set(
+                c["name"],
+                c["value"],
+                domain=c.get("domain") or None,
+                path=c.get("path", "/"),
+            )
+        return len(cookies)
 
     def download(self, url: str, dest_path: str) -> int | None:
         """Stream a file to disk. Returns byte count, or None on failure."""

@@ -26,9 +26,13 @@ sources:
     allowed_domains: [kotkas.envir.ee]
     max_depth: 2
     max_pages: 300
+    render: true
     notes: >
       KMH aruanded, keskkonnakomplekslubade taotlused (sh asendiplaanid,
       ohutusdokumendid). Täpsem otsing võimalik portaalis käsitsi.
+      WAF blokeerib andmekeskuste IP-d ja tavalise HTTP-kliendi (403) –
+      jooksuta koduvõrgust päris brauseriga (render: true); vajadusel
+      logi enne sisse: python -m gas_plant_scraper login https://kotkas.envir.ee/
 
   - id: ee_plank
     country: EE
@@ -182,19 +186,29 @@ sources:
     languages: [cs, en]
     seeds:
       - "https://portal.cenia.cz/eiasea/view/eia100_cr"
+    search_post:
+      url: "https://portal.cenia.cz/eiasea/view/eia100_cr?lang=cs"
+      data: {typHledani: rychle}
+      query_field: quickSearch
     allowed_domains: [portal.cenia.cz]
     max_depth: 2
     max_pages: 300
     notes: >
       Tšehhi EIA register: projektide lehtedel dokumentace-failid
-      (sh situace/výkres joonised, ohutusanalüüsid).
+      (sh situace/výkres joonised, ohutusanalüüsid). Otsing töötab ainult
+      POST-vormina (search_post); GET-parameetreid portaal eirab.
 
   - id: cz_ippc
     country: CZ
     name: "IPPC – integrované povolení (MŽP)"
     languages: [cs]
     seeds:
-      - "https://ippc.mzp.cz/ippc/ippc.nsf/vydana-povoleni"
+      - "https://ippc.mzp.cz/ippc/ippc.nsf/index.xsp"
     allowed_domains: [ippc.mzp.cz, mzp.cz]
-    max_depth: 1
+    max_depth: 2
     max_pages: 100
+    render: true
+    notes: >
+      Vana route /ippc/ippc.nsf/vydana-povoleni annab 404; portaal on
+      XPages-rakendus (index.xsp), mis vajab JS-renderdust – ilma selleta
+      loendivaated linke ei näita.

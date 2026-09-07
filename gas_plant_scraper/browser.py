@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import os
+import shlex
 import time
 
 log = logging.getLogger(__name__)
@@ -35,6 +36,12 @@ def available() -> bool:
     return sync_playwright is not None
 
 
+def storage_state_path() -> str | None:
+    """Path of the saved browser session (GPS_STORAGE_STATE), if it exists."""
+    path = os.environ.get("GPS_STORAGE_STATE")
+    return path if path and os.path.exists(path) else None
+
+
 class Renderer:
     """Renders pages in headless Chromium, one at a time, politely."""
 
@@ -44,6 +51,8 @@ class Renderer:
         timeout_ms: int = 30000,
         settle_ms: int = 2000,
         user_agent: str | None = None,
+        headed: bool = False,
+        block_resources: bool = True,
     ):
         if sync_playwright is None:  # pragma: no cover
             raise RuntimeError(
@@ -54,6 +63,8 @@ class Renderer:
         self.timeout_ms = timeout_ms
         self.settle_ms = settle_ms
         self.user_agent = user_agent
+        self.headed = headed
+        self.block_resources = block_resources
         self._pw = None
         self._browser = None
         self._context = None
@@ -63,27 +74,58 @@ class Renderer:
     def _launch(self) -> None:
         self._pw = sync_playwright().start()
         executable = os.environ.get("GPS_CHROMIUM_PATH")
+        launch_kwargs: dict = {"headless": not self.headed}
+        # GPS_CHROMIUM_ARGS: extra Chromium flags, e.g. --ssl-version-max=tls1.2
+        # for TLS-intercepting egress proxies that break Chromium's TLS 1.3.
+        extra_args = os.environ.get("GPS_CHROMIUM_ARGS")
+        if extra_args:
+            launch_kwargs["args"] = shlex.split(extra_args)
+        # GPS_PROXY: proxy for the browser; Chromium does not read HTTPS_PROXY.
+        proxy = os.environ.get("GPS_PROXY")
+        if proxy:
+            launch_kwargs["proxy"] = {"server": proxy}
         try:
-            self._browser = self._pw.chromium.launch(executable_path=executable)
+            self._browser = self._pw.chromium.launch(
+                executable_path=executable, **launch_kwargs
+            )
         except PlaywrightError:
             if executable or not os.path.exists(_FALLBACK_CHROMIUM):
                 raise
             log.info("using fallback Chromium at %s", _FALLBACK_CHROMIUM)
             self._browser = self._pw.chromium.launch(
-                executable_path=_FALLBACK_CHROMIUM
+                executable_path=_FALLBACK_CHROMIUM, **launch_kwargs
             )
-        self._context = self._browser.new_context(
-            user_agent=self.user_agent,
-            viewport={"width": 1440, "height": 900},
-        )
-        self._context.route(
-            "**/*",
-            lambda route: (
-                route.abort()
-                if route.request.resource_type in _BLOCKED_RESOURCES
-                else route.continue_()
-            ),
-        )
+        context_kwargs: dict = {
+            "user_agent": self.user_agent,
+            "viewport": {"width": 1440, "height": 900},
+        }
+        # GPS_STORAGE_STATE: Playwright storage-state JSON saved by the
+        # ``login`` command; carries an authenticated session (e.g. Smart-ID)
+        # into rendered fetches.
+        state_path = storage_state_path()
+        if state_path:
+            context_kwargs["storage_state"] = state_path
+            log.info("using saved browser session from %s", state_path)
+        self._context = self._browser.new_context(**context_kwargs)
+        if self.block_resources:
+            self._context.route(
+                "**/*",
+                lambda route: (
+                    route.abort()
+                    if route.request.resource_type in _BLOCKED_RESOURCES
+                    else route.continue_()
+                ),
+            )
+
+    def save_storage_state(self, path: str) -> None:
+        """Persist the context's cookies/localStorage for later runs."""
+        self._ensure_started()
+        self._context.storage_state(path=path)
+
+    def new_page(self):
+        """An interactive page in this context (used by the login flow)."""
+        self._ensure_started()
+        return self._context.new_page()
 
     def _ensure_started(self) -> None:
         if self._context is None:
