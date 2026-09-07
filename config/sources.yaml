@@ -26,9 +26,13 @@ sources:
     allowed_domains: [kotkas.envir.ee]
     max_depth: 2
     max_pages: 300
+    render: true
     notes: >
       KMH aruanded, keskkonnakomplekslubade taotlused (sh asendiplaanid,
       ohutusdokumendid). Täpsem otsing võimalik portaalis käsitsi.
+      WAF blokeerib andmekeskuste IP-d ja tavalise HTTP-kliendi (403) –
+      jooksuta koduvõrgust päris brauseriga (render: true); vajadusel
+      logi enne sisse: python -m gas_plant_scraper login https://kotkas.envir.ee/
 
   - id: ee_plank
     country: EE
@@ -60,18 +64,20 @@ sources:
   # ─── Läti ───────────────────────────────────────────────────────────────
   - id: lv_vpvb
     country: LV
-    name: "Vides pārraudzības valsts birojs / EVA – IVN (KMH) projektid"
+    name: "EVA (end. VPVB) – IVN (KMH) projektid"
     languages: [lv, en]
     seeds:
       - "https://www.eva.gov.lv/lv/ietekmes-uz-vidi-novertejumu-projekti"
     search_url: "https://www.eva.gov.lv/lv/search?q={query}"
-    allowed_domains: [vpvb.gov.lv, www.vpvb.gov.lv, eva.gov.lv, www.eva.gov.lv]
+    allowed_domains: [eva.gov.lv, www.eva.gov.lv, vpvb.gov.lv, www.vpvb.gov.lv]
     max_depth: 2
     max_pages: 300
     notes: >
       VPVB liideti Vides aizsardzības aģentūra (EVA) alla; vpvb.gov.lv
-      suunab nüüd eva.gov.lv-le. Projektilehtede manused on laiendita
-      Drupali lingid (/lv/media/NNN/download?attachment).
+      suunab nüüd eva.gov.lv-le ja vanad routed annavad 404. Töötav loend
+      on /lv/ietekmes-uz-vidi-novertejumu-projekti ja otsing /lv/search?q=
+      (2026-09 jooksuga kontrollitud, 20 dokumenti). Projektilehtede
+      manused on laiendita Drupali lingid (/lv/media/NNN/download?attachment).
 
   - id: lv_geolatvija
     country: LV
@@ -132,7 +138,8 @@ sources:
       YVA-projektide lehed sisaldavad arviointiselostus-aruandeid, kus on
       asendiplaanid ja tehnilised kirjeldused. Sait koliti 2024/25 ümber:
       vana /fi/haku otsing annab 404, uus /fi/search on kliendipoolne
-      React-rakendus – vajab renderdust (render: true).
+      React-rakendus – vajab renderdust (render: true; 2026-09 jooksuga
+      kontrollitud, 4 dokumenti).
 
   - id: fi_ylupa
     country: FI
@@ -201,15 +208,21 @@ sources:
     languages: [cs, en]
     seeds:
       - "https://portal.cenia.cz/eiasea/view/eia100_cr"
+    search_post:
+      url: "https://portal.cenia.cz/eiasea/view/eia100_cr?lang=cs"
+      data: {typHledani: rychle}
+      query_field: quickSearch
     allowed_domains: [portal.cenia.cz]
     max_depth: 2
     max_pages: 300
     notes: >
       Tšehhi EIA register: projektide lehtedel dokumentace-failid
       (sh situace/výkres joonised, ohutusanalüüsid). Avaleht näitab vaid
-      viimaseid projekte; otsing käib POST-iga (typHledani=rychle,
-      quickSearch=<sõna>). Parim tulemus: lisa gaasiprojektide detail-URLid
-      (https://portal.cenia.cz/eiasea/detail/EIA_xxx?lang=cs) seeds-nimekirja.
+      viimaseid projekte; otsing töötab ainult POST-vormina ja käib
+      search_post-seadistuse kaudu (typHledani=rychle, quickSearch=<sõna>).
+      Vajadusel saab gaasiprojektide detail-URLe
+      (https://portal.cenia.cz/eiasea/detail/EIA_xxx?lang=cs) lisada ka
+      otse seeds-nimekirja.
 
   - id: cz_ippc
     country: CZ
@@ -222,5 +235,6 @@ sources:
     max_pages: 100
     render: true
     notes: >
-      XPages-rakendus, vajab JS-renderdust; vana route
-      /ippc/ippc.nsf/vydana-povoleni annab nüüd 404.
+      Vana route /ippc/ippc.nsf/vydana-povoleni annab 404; portaal on
+      XPages-rakendus (index.xsp), mis vajab JS-renderdust – ilma selleta
+      loendivaated linke ei näita.

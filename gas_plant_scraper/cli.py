@@ -58,6 +58,10 @@ def cmd_run(args: argparse.Namespace) -> int:
         delay_seconds=args.delay,
         respect_robots=not args.ignore_robots,
     )
+    state_path = browser.storage_state_path()
+    if state_path:
+        n = fetcher.load_storage_state_cookies(state_path)
+        print(f"Kasutan salvestatud sisselogimist ({n} küpsist): {state_path}")
 
     renderer = None
     needs_render = any(s.render for s in sources) and not args.no_render
@@ -105,6 +109,42 @@ def cmd_run(args: argparse.Namespace) -> int:
     catalog.export_jsonl(data_dir / "catalog.jsonl")
     catalog.close()
     print(f"Kokku {total_docs} dokumenti. Kataloog: {data_dir/'catalog.csv'}")
+    return 0
+
+
+def cmd_login(args: argparse.Namespace) -> int:
+    """Open a visible browser so the user can sign in (e.g. Smart-ID /
+    Mobiil-ID / ID-kaart), then save the session for later runs.
+
+    Usage:
+        python -m gas_plant_scraper login https://kotkas.envir.ee/
+        GPS_STORAGE_STATE=data/storage_state.json python -m gas_plant_scraper run ...
+    """
+    if not browser.available():
+        print(
+            "playwright pole paigaldatud: pip install playwright "
+            "&& playwright install chromium",
+            file=sys.stderr,
+        )
+        return 1
+    state_path = Path(args.state)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    renderer = browser.Renderer(headed=True, block_resources=False)
+    try:
+        page = renderer.new_page()
+        page.goto(args.url)
+        input(
+            "Logi brauseris sisse (Smart-ID / Mobiil-ID / ID-kaart) ja "
+            "vajuta siin Enter, kui valmis... "
+        )
+        renderer.save_storage_state(str(state_path))
+    finally:
+        renderer.close()
+    print(
+        f"Sessioon salvestatud: {state_path}\n"
+        f"Kasuta järgmistel jooksudel: GPS_STORAGE_STATE={state_path} "
+        f"python -m gas_plant_scraper run ..."
+    )
     return 0
 
 
@@ -177,6 +217,16 @@ def main(argv: list[str] | None = None) -> int:
     p_run.add_argument("--ignore-robots", action="store_true",
                        help="ära arvesta robots.txt-ga (kasuta vastutustundlikult)")
     p_run.set_defaults(func=cmd_run)
+
+    p_login = sub.add_parser(
+        "login",
+        help="Ava nähtav brauser sisselogimiseks (Smart-ID jt) ja "
+             "salvesta sessioon",
+    )
+    p_login.add_argument("url", help="portaali avaleht, nt https://kotkas.envir.ee/")
+    p_login.add_argument("--state", default=str(DEFAULT_DATA_DIR / "storage_state.json"),
+                         help="kuhu sessioon salvestada")
+    p_login.set_defaults(func=cmd_login)
 
     p_exp = sub.add_parser("export", help="Ekspordi kataloog CSV/JSONL kujul")
     p_exp.add_argument("--data", default=str(DEFAULT_DATA_DIR))

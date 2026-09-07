@@ -115,14 +115,17 @@ juurde faile ei avaldata — klassifitseerida sai vaid pealkirja järgi.)
 
 ## Kooditäiendused (committed)
 
-- `gas_plant_scraper/browser.py` — Chromium käivitatakse
-  `--ssl-version-max=tls1.2` lipuga (keskkonna TLS-i vahelt haarav proksi
-  lähtestab TLS 1.3 kätluse; eelmises jooksus diagnoositud probleem) ja
-  kontekst `ignore_https_errors=True` (proksi allkirjastab sertid oma
-  CA-ga, mida Chromiumi pood ei tunne; nt ylupa.avi.fi andis
-  ERR_CERT_DATE_INVALID). Ilma nendeta ei renderdu ükski SPA-allikas
-  selles keskkonnas; nendega renderdusid kõik peale Cloudflare'i-tõkkega
-  aaa.lrv.lt ja võrgutasandil blokitud tpdris.lt.
+- `gas_plant_scraper/browser.py` — kaks keskkonnamuutujat renderduse
+  jaoks TLS-i vahelt haarava proksi taga (mõlemad selles jooksus
+  kontrollitud ja hädavajalikud): `GPS_CHROMIUM_ARGS="--ssl-version-max=tls1.2"`
+  (proksi lähtestab Chromiumi TLS 1.3 kätluse — ERR_CONNECTION_RESET ka
+  example.com-ile; TLS 1.2 lagi parandab selle) ja
+  `GPS_IGNORE_HTTPS_ERRORS=1` (proksi allkirjastab serdid oma CA-ga, mida
+  Chromiumi pood ei tunne; nt ytietopalvelu andis ERR_CERT_DATE_INVALID).
+  Ilma nendeta ei renderdu selles keskkonnas ükski SPA-allikas; nendega
+  renderdusid kõik peale Cloudflare'i-tõkkega aaa.lrv.lt ja võrgutasandil
+  blokitud tpdris.lt. (Lippude mehhanism ühendatud paralleelsessiooni
+  omaga, mis lisas GPS_CHROMIUM_ARGS/GPS_PROXY/GPS_STORAGE_STATE toe.)
 - `gas_plant_scraper/crawler.py` — `_is_document_url` tunneb nüüd ära ka
   laiendita Drupali-manused (tee lõpp `/download`), ilma milleta LV
   dokumendid jäänuks nähtamatuks.

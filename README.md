@@ -94,7 +94,30 @@ dokumendinimekirjad. Eripärad:
 - robots.txt kehtib ka renderdatud lehtedele.
 
 Kohandatud Chromiumi asukoha saab anda keskkonnamuutujaga
-`GPS_CHROMIUM_PATH`.
+`GPS_CHROMIUM_PATH`. Lisaks: `GPS_CHROMIUM_ARGS` (lisa-lipud Chromiumile,
+nt `--ssl-version-max=tls1.2` TLS-i vahelthaaravate proksidega
+keskkondades) ja `GPS_PROXY` (proksi brauserile — Chromium ei loe
+`HTTPS_PROXY` muutujat ise).
+
+### Sisselogimine (Smart-ID / Mobiil-ID / ID-kaart)
+
+Osa portaale (nt KOTKAS) näitab sisselogitud kasutajale rohkem või blokeerib
+robotliiklust. Kohalikus masinas saab sessiooni kaasa anda:
+
+```bash
+# 1. Ava nähtav brauser, logi sisse (nt Smart-ID) ja vajuta Enter:
+python -m gas_plant_scraper login https://kotkas.envir.ee/
+
+# 2. Jooksuta kraapimist salvestatud sessiooniga:
+GPS_STORAGE_STATE=data/storage_state.json \
+  python -m gas_plant_scraper run --countries EE
+```
+
+Sessioon (küpsised + localStorage) salvestatakse Playwrighti
+storage-state-failina `data/` kausta (gitignore'itud) ning seda kasutavad
+nii renderdatud lehed kui ka tavalised HTTP-päringud ja failide
+allalaadimine. NB! Sisselogimine töötab ainult kohalikus masinas, kus
+brauseriaken avaneb — mitte kaug-/pilvekeskkonnas.
 
 ## Allikad riigiti
 
