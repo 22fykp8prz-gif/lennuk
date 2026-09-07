@@ -187,14 +187,21 @@ sources:
     max_pages: 300
     notes: >
       Tšehhi EIA register: projektide lehtedel dokumentace-failid
-      (sh situace/výkres joonised, ohutusanalüüsid).
+      (sh situace/výkres joonised, ohutusanalüüsid). Avaleht näitab vaid
+      viimaseid projekte; otsing käib POST-iga (typHledani=rychle,
+      quickSearch=<sõna>). Parim tulemus: lisa gaasiprojektide detail-URLid
+      (https://portal.cenia.cz/eiasea/detail/EIA_xxx?lang=cs) seeds-nimekirja.
 
   - id: cz_ippc
     country: CZ
     name: "IPPC – integrované povolení (MŽP)"
     languages: [cs]
     seeds:
-      - "https://ippc.mzp.cz/ippc/ippc.nsf/vydana-povoleni"
+      - "https://ippc.mzp.cz/ippc/ippc.nsf/index.xsp"
     allowed_domains: [ippc.mzp.cz, mzp.cz]
-    max_depth: 1
+    max_depth: 2
     max_pages: 100
+    render: true
+    notes: >
+      XPages-rakendus, vajab JS-renderdust; vana route
+      /ippc/ippc.nsf/vydana-povoleni annab nüüd 404.
