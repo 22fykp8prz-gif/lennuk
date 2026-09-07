@@ -60,14 +60,18 @@ sources:
   # ─── Läti ───────────────────────────────────────────────────────────────
   - id: lv_vpvb
     country: LV
-    name: "Vides pārraudzības valsts birojs – IVN (KMH) projektid"
+    name: "Vides pārraudzības valsts birojs / EVA – IVN (KMH) projektid"
     languages: [lv, en]
     seeds:
-      - "https://www.vpvb.gov.lv/lv/ietekmes-uz-vidi-novertejuma-projekti"
-    search_url: "https://www.vpvb.gov.lv/lv/search?q={query}"
-    allowed_domains: [vpvb.gov.lv, www.vpvb.gov.lv]
+      - "https://www.eva.gov.lv/lv/ietekmes-uz-vidi-novertejumu-projekti"
+    search_url: "https://www.eva.gov.lv/lv/search?q={query}"
+    allowed_domains: [vpvb.gov.lv, www.vpvb.gov.lv, eva.gov.lv, www.eva.gov.lv]
     max_depth: 2
     max_pages: 300
+    notes: >
+      VPVB liideti Vides aizsardzības aģentūra (EVA) alla; vpvb.gov.lv
+      suunab nüüd eva.gov.lv-le. Projektilehtede manused on laiendita
+      Drupali lingid (/lv/media/NNN/download?attachment).
 
   - id: lv_geolatvija
     country: LV
@@ -93,6 +97,10 @@ sources:
     allowed_domains: [aaa.lrv.lt, gamta.lt]
     max_depth: 2
     max_pages: 300
+    notes: >
+      aaa.lrv.lt on Cloudflare'i JS-väljakutse taga (403 + "Just a moment"),
+      mida ka peata Chromium ei läbi andmekeskuse IP-lt. Vajab jooksutamist
+      tavavõrgust või ametlikku API-t.
 
   - id: lt_tpdris
     country: LT
@@ -114,28 +122,37 @@ sources:
     name: "Ymparisto.fi – YVA-hankkeet (KMH projektid)"
     languages: [fi, en]
     seeds:
-      - "https://www.ymparisto.fi/fi/osallistu-ja-vaikuta/ymparistovaikutusten-arviointi/yva-hankkeet"
-    search_url: "https://www.ymparisto.fi/fi/haku?query={query}"
+      - "https://www.ymparisto.fi/fi/yva-hankkeet"
+    search_url: "https://www.ymparisto.fi/fi/search?q={query}"
     allowed_domains: [ymparisto.fi, www.ymparisto.fi]
     max_depth: 2
     max_pages: 300
+    render: true
     notes: >
       YVA-projektide lehed sisaldavad arviointiselostus-aruandeid, kus on
-      asendiplaanid ja tehnilised kirjeldused.
+      asendiplaanid ja tehnilised kirjeldused. Sait koliti 2024/25 ümber:
+      vana /fi/haku otsing annab 404, uus /fi/search on kliendipoolne
+      React-rakendus – vajab renderdust (render: true).
 
   - id: fi_ylupa
     country: FI
-    name: "AVI Lupa-Tietopalvelu – keskkonnaload"
+    name: "Lupa- ja valvontavirasto – ympäristöasioiden tietopalvelu (end. AVI ylupa)"
     languages: [fi]
     seeds:
-      - "https://ylupa.avi.fi/fi-FI"
-    allowed_domains: [ylupa.avi.fi]
+      - "https://ytietopalvelu.lvv.fi/fi-FI"
+    allowed_domains: [ylupa.avi.fi, ytietopalvelu.lvv.fi, lvv.fi]
     max_depth: 2
     max_pages: 150
     render: true
     notes: >
-      SPA-portaal; renderdatakse Playwrightiga (render: true), lubade PDF-id
-      (sh joonised) tulevad projektilehtedelt.
+      Teenus kolis 2026-01 ylupa.avi.fi pealt ytietopalvelu.lvv.fi peale
+      (ameti reform). Blazor-WASM SPA: otsing POST /api/v1/cases/search
+      (JSON {type:0, query:..., offset:0, fetchNext:0}), asja dokumendid
+      GET /api/v1/cases/actions/{caseId}, faili allalaadimine
+      GET /api/v1/documents/attachment/{attachmentId}. Asjalehed
+      (/fi-FI/asia/{id}) EI sisalda tavalisi <a>-linke dokumentidele,
+      seega üldine roomaja neid kätte ei saa – kasuta API-põhist sihitud
+      kogumist (vt results/RUN_STATUS_EU.md).
 
   # ─── Rootsi ─────────────────────────────────────────────────────────────
   - id: se_lansstyrelsen
@@ -144,14 +161,16 @@ sources:
     languages: [sv, en]
     seeds:
       - "https://www.lansstyrelsen.se/stockholm/miljo-och-vatten/miljofarlig-verksamhet.html"
-    search_url: "https://www.lansstyrelsen.se/sok.html?query={query}"
+    search_url: "https://www.lansstyrelsen.se/stockholm/sokresultat.html?query={query}"
     allowed_domains: [lansstyrelsen.se, www.lansstyrelsen.se]
     max_depth: 2
     max_pages: 200
     notes: >
       Rootsis pole ühtset avalikku dokumendiportaali; load menetleb
       miljöprövningsdelegation / mark- och miljödomstol. Dokumendid saab
-      küsida diariumist (offentlighetsprincipen).
+      küsida diariumist (offentlighetsprincipen). Otsing käib maakonna
+      prefiksi alt (/stockholm/sokresultat.html?query=...); üleriigiline
+      /sok.html annab 404.
 
   # ─── Poola ──────────────────────────────────────────────────────────────
   - id: pl_gdos_baza

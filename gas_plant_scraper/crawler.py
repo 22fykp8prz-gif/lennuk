@@ -80,7 +80,11 @@ def _domain_allowed(url: str, allowed: list[str]) -> bool:
 
 def _is_document_url(url: str) -> bool:
     path = urlparse(url).path.lower()
-    return any(path.endswith(ext) for ext in DOCUMENT_EXTENSIONS)
+    if any(path.endswith(ext) for ext in DOCUMENT_EXTENSIONS):
+        return True
+    # Drupal-style attachment routes carry no file extension
+    # (e.g. eva.gov.lv/lv/media/2458/download?attachment).
+    return path.rstrip("/").endswith("/download")
 
 
 def _safe_filename(url: str, max_len: int = 120) -> str:

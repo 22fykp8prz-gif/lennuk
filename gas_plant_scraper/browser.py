@@ -63,18 +63,28 @@ class Renderer:
     def _launch(self) -> None:
         self._pw = sync_playwright().start()
         executable = os.environ.get("GPS_CHROMIUM_PATH")
+        # Some egress proxies (TLS-intercepting) cannot complete headless
+        # Chromium's TLS 1.3 handshake, resetting every connection; capping
+        # at TLS 1.2 restores connectivity through them.
+        launch_args = ["--ssl-version-max=tls1.2"]
         try:
-            self._browser = self._pw.chromium.launch(executable_path=executable)
+            self._browser = self._pw.chromium.launch(
+                executable_path=executable, args=launch_args
+            )
         except PlaywrightError:
             if executable or not os.path.exists(_FALLBACK_CHROMIUM):
                 raise
             log.info("using fallback Chromium at %s", _FALLBACK_CHROMIUM)
             self._browser = self._pw.chromium.launch(
-                executable_path=_FALLBACK_CHROMIUM
+                executable_path=_FALLBACK_CHROMIUM, args=launch_args
             )
         self._context = self._browser.new_context(
             user_agent=self.user_agent,
             viewport={"width": 1440, "height": 900},
+            # The intercepting proxy re-signs certificates with a CA that
+            # Chromium's own store does not trust; the proxy already
+            # verifies upstream TLS, so skip the browser-side check.
+            ignore_https_errors=True,
         )
         self._context.route(
             "**/*",
