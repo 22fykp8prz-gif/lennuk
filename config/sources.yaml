@@ -64,14 +64,17 @@ sources:
   # ─── Läti ───────────────────────────────────────────────────────────────
   - id: lv_vpvb
     country: LV
-    name: "Vides pārraudzības valsts birojs – IVN (KMH) projektid"
+    name: "EVA (end. VPVB) – IVN (KMH) projektid"
     languages: [lv, en]
     seeds:
-      - "https://www.vpvb.gov.lv/lv/ietekmes-uz-vidi-novertejuma-projekti"
-    search_url: "https://www.vpvb.gov.lv/lv/search?q={query}"
-    allowed_domains: [vpvb.gov.lv, www.vpvb.gov.lv]
+      - "https://www.eva.gov.lv/lv/ietekmes-uz-vidi-novertejums"
+    search_url: "https://www.eva.gov.lv/lv/meklet?q={query}"
+    allowed_domains: [eva.gov.lv, www.eva.gov.lv, vpvb.gov.lv, www.vpvb.gov.lv]
     max_depth: 2
     max_pages: 300
+    notes: >
+      VPVB liideti Vides aizsardzības... ametisse; vpvb.gov.lv suunab nüüd
+      eva.gov.lv peale, vanad routed annavad 404.
 
   - id: lv_geolatvija
     country: LV
@@ -118,14 +121,16 @@ sources:
     name: "Ymparisto.fi – YVA-hankkeet (KMH projektid)"
     languages: [fi, en]
     seeds:
-      - "https://www.ymparisto.fi/fi/osallistu-ja-vaikuta/ymparistovaikutusten-arviointi/yva-hankkeet"
-    search_url: "https://www.ymparisto.fi/fi/haku?query={query}"
+      - "https://www.ymparisto.fi/fi/osallistu-ja-vaikuta/ymparistovaikutusten-arviointi/hankkeiden-ymparistovaikutusten-arviointimenettely-yva/yva-hankkeet"
+    search_url: "https://www.ymparisto.fi/fi/search?q={query}"
     allowed_domains: [ymparisto.fi, www.ymparisto.fi]
     max_depth: 2
     max_pages: 300
     notes: >
       YVA-projektide lehed sisaldavad arviointiselostus-aruandeid, kus on
-      asendiplaanid ja tehnilised kirjeldused.
+      asendiplaanid ja tehnilised kirjeldused. Portaal uuendati 2024–25:
+      vana /fi/haku route annab 404, uus otsing on /fi/search?q= (tulemused
+      võivad olla JS-laetud – kohalikus masinas kasuta renderdust).
 
   - id: fi_ylupa
     country: FI
